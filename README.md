@@ -7,7 +7,11 @@ A PWA that works backwards from your actual finances — maximum loan and saving
 - **Costs** — full upfront cost breakdown for a specific property, plus a "can I afford this" check
 - **Invest** — investment property cashflow: yield, upfront capital required, and cashflow before/after tax across a lower- and higher-rent scenario, with 5/10-year growth projections. Includes a New Build / Established toggle reflecting the 2026 Budget's negative gearing reform (established properties bought now lose the ability to offset losses against salary from FY2027-28 — new builds are exempt)
 - **Journey** — for buying an investment property now and a home to live in later: models Property 1's equity growth, how much of it you could release to fund Property 2's deposit, and flags the state-specific impact on first-home-buyer stamp duty relief and the federal First Home Guarantee
-- **Rates** — every stamp duty / LMI / fee assumption the app uses, editable, with a last-verified date
+- **Compare** — save a few real properties side by side (price, deposit, total cash required, yield, cashflow) with a "best cashflow" highlight, so you're comparing like-for-like instead of re-running numbers in your head
+- **Rates** — every stamp duty / LMI / fee assumption the app uses, editable, with a last-verified date, a step-by-step buying process guide, and a full glossary of every term used in the app
+- **Glossary** — tap any dotted-underline term anywhere in the app (Stamp duty, LMI, LVR, Negative gearing, Yield, DTI, and 15 more) for a plain-English explanation in a bottom sheet — helpful if you're new to property
+- A first-run welcome guide offers a **guided walkthrough** — chains Afford → Invest → Costs → Journey in order, carrying your numbers forward automatically at each step so you never retype the same price twice. Restart it anytime from the Rates tab.
+- The Mortgage tab includes a rate stress test showing your repayment from -1% to +3% (the buffer banks assess you at)
 - Light, dark and system theme
 - Installable to your home screen, works fully offline after first load
 - All data stays on your device (localStorage only — nothing is sent anywhere)
@@ -52,7 +56,7 @@ The app then runs offline, with its own icon, no browser chrome.
 Whenever you edit any file, bump the cache version in `service-worker.js`:
 
 ```js
-const CACHE_VERSION = "property-planner-v6"; // increment this
+const CACHE_VERSION = "property-planner-v10"; // increment this
 ```
 
 Then commit and push — GitHub Pages redeploys automatically within a minute or two. On your phone, **fully close** the app (not just background it) and reopen it to pick up the update; the service worker deliberately waits for a clean restart rather than hot-swapping mid-session.
@@ -87,6 +91,7 @@ property-planner/
 ├── js/
 │   ├── rates.js           # stamp duty / LMI / fee / investment default data
 │   ├── tax.js              # FY2026-27 income tax, Medicare levy, LITO, HECS
+│   ├── glossary.js         # plain-English definitions for the tap-to-learn glossary
 │   ├── calc.js             # mortgage, affordability, investment & borrowing-power engine
 │   └── app.js               # UI wiring
 └── icons/

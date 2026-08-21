@@ -31,6 +31,16 @@
 <body>
 <div id="app">
 
+  <!-- ===================== GUIDED WALKTHROUGH BANNER ===================== -->
+  <div class="guided-banner hidden" id="guided-banner">
+    <div class="guided-banner-text">
+      <div class="guided-banner-label" id="guided-banner-label">Step 1 of 4 · Affordability</div>
+      <div class="guided-progress-track"><div class="guided-progress-fill" id="guided-progress-fill" style="width:25%"></div></div>
+    </div>
+    <button class="guided-exit-btn" id="guided-exit">Exit guide</button>
+  </div>
+
+
   <!-- ===================== AFFORD TAB ===================== -->
   <section id="screen-afford" class="screen active">
     <div class="large-title">What can I afford?</div>
@@ -80,7 +90,7 @@
           <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="bp-rent-shade" placeholder="80" value="80" style="text-align:right"><span>%</span></div>
         </div>
         <div class="row">
-          <span class="row-label">HECS / HELP debt</span>
+          <span class="row-label"><span class="term-link" data-term="hecs">HECS / HELP</span> debt</span>
           <label class="switch"><input type="checkbox" id="bp-hecs"><span class="switch-track"></span></label>
         </div>
         <div class="row">
@@ -186,7 +196,7 @@
       </div>
       <div class="row hidden" id="af-lmi-waived-row">
         <div>
-          <div class="row-label">No LMI (First Home Guarantee)</div>
+          <div class="row-label">No <span class="term-link" data-term="lmi">LMI</span> (<span class="term-link" data-term="fhg">First Home Guarantee</span>)</div>
           <div class="row-sublabel">5% deposit scheme, subject to eligibility</div>
         </div>
         <label class="switch"><input type="checkbox" id="af-lmi-waived"><span class="switch-track"></span></label>
@@ -220,6 +230,7 @@
 
       <div class="breakdown" id="af-breakdown"></div>
       <div class="status-banner" id="af-status"></div>
+      <button class="btn-primary guided-continue-btn hidden" id="af-guided-continue">Continue to Invest →</button>
     </div>
   </section>
 
@@ -270,7 +281,7 @@
       </div>
       <div class="row">
         <div>
-          <div class="row-label">Offset account balance</div>
+          <div class="row-label"><span class="term-link" data-term="offset">Offset account</span> balance</div>
           <div class="row-sublabel">Reduces interest-charged balance</div>
         </div>
         <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="mg-offset" placeholder="0" value="0"></div>
@@ -286,6 +297,10 @@
         <div class="hero-caption" id="mg-caption"></div>
       </div>
       <div class="breakdown" id="mg-breakdown"></div>
+
+      <div class="eyebrow">If rates change</div>
+      <p class="screen-subtitle" style="margin-top:-4px;">Banks stress-test you at your rate + 3% before approving a loan — here's what that actually looks like on your repayment.</p>
+      <div class="breakdown" id="mg-stress-test"></div>
     </div>
   </section>
 
@@ -325,7 +340,7 @@
       </div>
       <div class="row hidden" id="co-lmi-waived-row">
         <div>
-          <div class="row-label">No LMI (First Home Guarantee)</div>
+          <div class="row-label">No <span class="term-link" data-term="lmi">LMI</span> (<span class="term-link" data-term="fhg">First Home Guarantee</span>)</div>
           <div class="row-sublabel">5% deposit scheme, subject to eligibility</div>
         </div>
         <label class="switch"><input type="checkbox" id="co-lmi-waived"><span class="switch-track"></span></label>
@@ -358,7 +373,7 @@
           <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-insurance" placeholder="120" value="120"><span>/mo</span></div>
         </div>
         <div class="row">
-          <span class="row-label">Strata / body corp</span>
+          <span class="row-label"><span class="term-link" data-term="strata">Strata</span> / body corp</span>
           <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-strata" placeholder="0" value="0"><span>/mo</span></div>
         </div>
         <div class="row">
@@ -368,6 +383,7 @@
       </div>
       <button class="btn-secondary" id="co-ongoing-calc">Add mortgage repayment for real monthly cost</button>
       <div class="breakdown hidden" id="co-ongoing-breakdown"></div>
+      <button class="btn-primary guided-continue-btn hidden" id="co-guided-continue">Continue to Journey →</button>
     </div>
   </section>
 
@@ -400,7 +416,7 @@
       </div>
       <div class="row">
         <div>
-          <div class="row-label">Offset balance</div>
+          <div class="row-label"><span class="term-link" data-term="offset">Offset</span> balance</div>
         </div>
         <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-offset" placeholder="0" value="0"></div>
       </div>
@@ -432,7 +448,7 @@
         <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-ll-ins" placeholder="350" value="350"><span>/yr</span></div>
       </div>
       <div class="row">
-        <span class="row-label">Property management</span>
+        <span class="row-label"><span class="term-link" data-term="propertyMgmt">Property management</span></span>
         <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-mgmt-pct" placeholder="6.6" style="text-align:right" value="6.6"><span>% of rent</span></div>
       </div>
       <div class="row">
@@ -441,7 +457,7 @@
       </div>
       <div class="row">
         <div>
-          <div class="row-label">Vacancy allowance</div>
+          <div class="row-label"><span class="term-link" data-term="vacancy">Vacancy allowance</span></div>
           <div class="row-sublabel">Weeks of lost rent per year</div>
         </div>
         <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-vacancy" placeholder="1.5" style="text-align:right" value="1.5"><span>wks</span></div>
@@ -451,7 +467,7 @@
         <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-land-tax" placeholder="0" value="0"><span>/yr</span></div>
       </div>
       <div class="row">
-        <span class="row-label">Strata / levies</span>
+        <span class="row-label"><span class="term-link" data-term="strata">Strata</span> / levies</span>
         <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-strata" placeholder="0" value="0"><span>/mo</span></div>
       </div>
       <div class="row">
@@ -493,18 +509,18 @@
       </div>
       <div class="row">
         <div>
-          <div class="row-label">Marginal tax rate</div>
+          <div class="row-label"><span class="term-link" data-term="marginalTaxRate">Marginal tax rate</span></div>
           <div class="row-sublabel">Your effective personal rate</div>
         </div>
         <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-tax-rate" placeholder="32.5" style="text-align:right" value="32.5"><span>%</span></div>
       </div>
       <div class="row">
-        <span class="row-label">Depreciation</span>
+        <span class="row-label"><span class="term-link" data-term="depreciation">Depreciation</span></span>
         <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-depreciation" placeholder="0" value="0"><span>/yr</span></div>
       </div>
       <div class="row">
         <div>
-          <div class="row-label">Growth rate</div>
+          <div class="row-label"><span class="term-link" data-term="cagr">Growth rate</span></div>
           <div class="row-sublabel">Estimated CAGR</div>
         </div>
         <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-growth" placeholder="5" style="text-align:right" value="5"><span>% p.a.</span></div>
@@ -542,6 +558,7 @@
         <span class="dot"></span>
         <span>Cashflow before tax subtracts your full loan repayment (principal + interest) — what actually leaves your account. For a <strong>new build</strong>, cashflow after tax adds back a tax refund from negative gearing as usual. For an <strong>established</strong> property, the 2026 Budget's tax reform means a loss can no longer offset your salary from FY2027-28 onward — it's carried forward instead, to offset future rental or capital gains income only. This isn't tax advice — check your figures with an accountant.</span>
       </div>
+      <button class="btn-primary guided-continue-btn hidden" id="in-guided-continue">Continue to Costs →</button>
     </div>
   </section>
 
@@ -575,7 +592,7 @@
       </div>
       <div class="row">
         <div>
-          <div class="row-label">Growth rate</div>
+          <div class="row-label"><span class="term-link" data-term="cagr">Growth rate</span></div>
           <div class="row-sublabel">Estimated CAGR for this property</div>
         </div>
         <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="jy-growth1" placeholder="6" value="6" style="text-align:right"><span>% p.a.</span></div>
@@ -590,7 +607,7 @@
       </div>
       <div class="row">
         <div>
-          <div class="row-label">Equity release LVR</div>
+          <div class="row-label"><span class="term-link" data-term="equity">Equity release</span> <span class="term-link" data-term="lvr">LVR</span></div>
           <div class="row-sublabel">How far lenders typically let you refinance to</div>
         </div>
         <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="jy-equity-lvr" placeholder="80" value="80" style="text-align:right"><span>%</span></div>
@@ -645,7 +662,47 @@
         <span class="dot"></span>
         <span>This assumes you can refinance Property 1 up to your chosen LVR and that a lender approves the new loan — equity release and a second loan both depend on serviceability at the time, not just the numbers here. Treat this as a directional plan, not a guarantee.</span>
       </div>
+      <button class="btn-primary guided-continue-btn hidden" id="jy-guided-continue">Finish walkthrough ✓</button>
     </div>
+  </section>
+
+  <!-- ===================== COMPARE TAB ===================== -->
+  <section id="screen-compare" class="screen">
+    <div class="large-title">Compare properties</div>
+    <p class="screen-subtitle">Save a few real options side by side — price, yield, and cashflow — so you're comparing like-for-like instead of juggling numbers in your head.</p>
+
+    <div class="eyebrow">Add a property</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Label</span>
+        <input class="row-input" style="text-align:right" id="cp-label" placeholder="e.g. Blacktown unit" value="">
+      </div>
+      <div class="row">
+        <span class="row-label">Price</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="cp-price" placeholder="650,000"></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Deposit</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="cp-deposit-pct" placeholder="20" value="20" style="text-align:right"><span>%</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Expected rent</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="cp-rent" placeholder="550"><span>/wk</span></div>
+      </div>
+      <div class="row tappable" id="cp-state-row">
+        <span class="row-label">State / territory</span>
+        <span class="row-value" id="cp-state-value">NSW <span class="chevron">›</span></span>
+      </div>
+      <div class="row">
+        <span class="row-label">Interest rate</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="cp-rate" placeholder="6.50" value="6.50" style="text-align:right"><span>% p.a.</span></div>
+      </div>
+    </div>
+    <button class="btn-primary" id="cp-add">Add to comparison</button>
+    <p class="screen-subtitle" style="margin-top:8px; font-size:12px;">Ongoing expenses use the Rates tab's investment defaults — edit them there to apply to every comparison.</p>
+
+    <div class="eyebrow">Saved properties</div>
+    <div id="cp-list"></div>
   </section>
 
   <!-- ===================== RATES / SETTINGS TAB ===================== -->
@@ -674,6 +731,81 @@
     <div class="eyebrow">Investment property defaults</div>
     <div class="group" id="rates-invest"></div>
     <p class="screen-subtitle" style="margin-top:8px;">These are starting points used on the Invest tab when a field is left blank — edit them directly there for your specific property.</p>
+
+    <div class="eyebrow">How to use this app</div>
+    <button class="btn-primary" id="show-guided-again" style="margin-top:0;">Start the guided walkthrough</button>
+    <button class="btn-secondary" id="show-welcome-again">Show the welcome guide again</button>
+
+    <div class="eyebrow">The buying process</div>
+    <p class="screen-subtitle" style="margin-top:-8px;">What actually happens, roughly in order, once you decide to buy.</p>
+    <div class="step-list">
+      <div class="step-row">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <div class="step-title">Get a real sense of your borrowing power</div>
+          <div class="step-body">Before looking at anything, know roughly what a bank will lend you. A pre-approval isn't a guarantee — the bank can still decline once it values the actual property — but it stops you wasting time on properties you can't afford.</div>
+          <span class="step-tab-hint">Afford tab</span>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <div class="step-title">Search, and sanity-check every serious option</div>
+          <div class="step-body">For an investment property, check the numbers actually work before you get attached — rent estimate, yield, and whether you'll be topping it up out of pocket each week.</div>
+          <span class="step-tab-hint">Invest tab</span>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <div class="step-title">Make an offer or bid</div>
+          <div class="step-body">Private sale: you negotiate a price, usually with a small holding deposit. Auction: the highest bid over reserve wins, unconditionally, on the spot — there's no cooling-off period at auction in most states, so all your checks need to happen before auction day, not after.</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-number">4</div>
+        <div class="step-content">
+          <div class="step-title">Building & pest inspection</div>
+          <div class="step-body">Get this done before you're locked in, not after. It's a few hundred dollars to find out about structural issues, pests, or major defects that could cost tens of thousands — skipping it to move faster is one of the most common regrets first-time buyers report.</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-number">5</div>
+        <div class="step-content">
+          <div class="step-title">Cooling-off period (private sales only)</div>
+          <div class="step-body">Most states give you a short window (commonly 3-5 business days, but it varies — confirm the exact period for your state and contract) after signing to pull out, usually for a small penalty. Auctions typically have no cooling-off at all.</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-number">6</div>
+        <div class="step-content">
+          <div class="step-title">Exchange contracts &amp; pay your deposit</div>
+          <div class="step-body">Once cooling-off passes (or you buy at auction), contracts become binding and your deposit — commonly 10%, sometimes less — is paid, usually held in trust until settlement.</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-number">7</div>
+        <div class="step-content">
+          <div class="step-title">Conveyancing &amp; finance finalisation</div>
+          <div class="step-body">Your conveyancer or solicitor handles title checks and contract details; your lender finalises formal loan approval and organises the funds for settlement.</div>
+        </div>
+      </div>
+      <div class="step-row">
+        <div class="step-number">8</div>
+        <div class="step-content">
+          <div class="step-title">Settlement</div>
+          <div class="step-body">Typically 30-90 days after exchange. Funds transfer, you get the keys, and stamp duty plus all the other upfront costs are paid around this point.</div>
+          <span class="step-tab-hint">Costs tab</span>
+        </div>
+      </div>
+    </div>
+    <div class="info-note">
+      <span class="dot"></span>
+      <span>Cooling-off periods, deposit conventions and exact settlement timing vary by state and by contract — this is a general guide, not legal advice. Always have a conveyancer or solicitor review your specific contract.</span>
+    </div>
+
+    <div class="eyebrow">Glossary</div>
+    <div class="group" id="rates-glossary"></div>
 
     <div class="info-note">
       <span class="dot"></span>
@@ -705,6 +837,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="18" r="2.5"/><circle cx="19" cy="6" r="2.5"/><path d="M7 16.5 17 7.5"/></svg>
       Journey
     </button>
+    <button class="tab-btn" data-tab="compare">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="6" height="10" rx="1"/><rect x="9" y="4" width="6" height="16" rx="1"/><rect x="15" y="13" width="6" height="7" rx="1"/></svg>
+      Compare
+    </button>
     <button class="tab-btn" data-tab="rates">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
       Rates
@@ -719,10 +855,65 @@
     <div class="sheet-list" id="state-sheet-list"></div>
   </div>
 
+  <!-- ===================== GLOSSARY SHEET ===================== -->
+  <div class="sheet-backdrop" id="glossary-backdrop"></div>
+  <div class="sheet" id="glossary-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="glossary-sheet-title"></div>
+    <div class="glossary-sheet-body">
+      <div class="glossary-sheet-full" id="glossary-sheet-full"></div>
+      <div class="glossary-sheet-def" id="glossary-sheet-def"></div>
+    </div>
+  </div>
+
+  <!-- ===================== WELCOME OVERLAY (first run) ===================== -->
+  <div class="welcome-overlay" id="welcome-overlay">
+    <div class="welcome-card">
+      <div class="welcome-title">Welcome to Property Planner</div>
+      <div class="welcome-subtitle">A suggested order to get the most out of it, especially if property finance is new to you.</div>
+      <div class="welcome-scroll">
+      <div class="step-list">
+        <div class="step-row">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">Afford — what can you actually borrow?</div>
+            <div class="step-body">Tap "Estimate it from my income" and enter your salary and debts. This is the number everything else builds on.</div>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">Invest — do the numbers stack up?</div>
+            <div class="step-body">Take that price (or a real listing) and check the rent, yield, and cashflow. This is the tab that should most influence whether you buy.</div>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-title">Costs — the real cash needed</div>
+            <div class="step-body">Once you have a specific property, get the full upfront cost breakdown and a clear affordability check.</div>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <div class="step-title">Journey — the long game</div>
+            <div class="step-body">See when you could realistically buy a home to live in afterward, and what buying investment-first costs you in first-home-buyer benefits.</div>
+          </div>
+        </div>
+      </div>
+      <p class="screen-subtitle" style="margin: 14px 0 0;">Tap any underlined term anywhere in the app for a plain-English explanation. The Rates tab has the full buying process guide and glossary whenever you need them.</p>
+      </div>
+      <button class="btn-primary" id="welcome-start-guided">Start the guided walkthrough</button>
+      <button class="btn-secondary" id="welcome-dismiss">Explore on my own</button>
+    </div>
+  </div>
+
 </div>
 
 <script src="js/rates.js"></script>
 <script src="js/tax.js"></script>
+<script src="js/glossary.js"></script>
 <script src="js/calc.js"></script>
 <script src="js/app.js"></script>
 </body>

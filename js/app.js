@@ -112,8 +112,8 @@
   const sheetBackdrop = document.getElementById("sheet-backdrop");
   const stateSheet = document.getElementById("state-sheet");
   const stateSheetList = document.getElementById("state-sheet-list");
-  let activeStateTarget = null; // 'af', 'co', 'in' or 'jy'
-  let selectedState = { af: "NSW", co: "NSW", in: "NSW", jy: "NSW" };
+  let activeStateTarget = null; // 'af', 'co', 'in', 'jy' or 'cp'
+  let selectedState = { af: "NSW", co: "NSW", in: "NSW", jy: "NSW", cp: "NSW" };
 
   function renderStateSheetList() {
     stateSheetList.innerHTML = "";
@@ -146,6 +146,36 @@
   document.getElementById("co-state-row").addEventListener("click", () => openSheet("co"));
   document.getElementById("in-state-row").addEventListener("click", () => openSheet("in"));
   document.getElementById("jy-state-row").addEventListener("click", () => openSheet("jy"));
+  document.getElementById("cp-state-row").addEventListener("click", () => openSheet("cp"));
+
+  // ---------------------------------------------------------------------
+  // Glossary sheet — opens for any tap on a .term-link, anywhere in the app,
+  // including inside dynamically-rendered breakdown tables (event delegation).
+  // ---------------------------------------------------------------------
+  const glossaryBackdrop = document.getElementById("glossary-backdrop");
+  const glossarySheet = document.getElementById("glossary-sheet");
+
+  function openGlossaryTerm(key) {
+    const entry = window.PropGlossary && window.PropGlossary[key];
+    if (!entry) return;
+    document.getElementById("glossary-sheet-title").textContent = entry.term;
+    document.getElementById("glossary-sheet-full").textContent = entry.full !== entry.term ? entry.full : "";
+    document.getElementById("glossary-sheet-def").textContent = entry.definition;
+    glossaryBackdrop.classList.add("open");
+    glossarySheet.classList.add("open");
+  }
+  function closeGlossarySheet() {
+    glossaryBackdrop.classList.remove("open");
+    glossarySheet.classList.remove("open");
+  }
+  glossaryBackdrop.addEventListener("click", closeGlossarySheet);
+
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest(".term-link");
+    if (link && link.dataset.term) {
+      openGlossaryTerm(link.dataset.term);
+    }
+  });
 
   // FHB toggle shows/hides "no LMI" row
   document.getElementById("af-fhb").addEventListener("change", (e) => {
@@ -313,12 +343,44 @@
     saveState();
   });
 
+  // Auto-links known jargon words/phrases inside a breakdown row's label to
+  // their glossary entry, so every generated table teaches as it's read.
+  const GLOSSARY_EXACT_LABELS = {
+    "Stamp duty": "stampDuty",
+    "LMI": "lmi",
+    "Property management": "propertyMgmt",
+    "Vacancy allowance": "vacancy",
+    "Depreciation": "depreciation",
+    "Yield on purchase": "yield",
+    "Usable equity": "equity",
+  };
+  function linkTerms(label) {
+    if (GLOSSARY_EXACT_LABELS[label]) {
+      return `<span class="term-link" data-term="${GLOSSARY_EXACT_LABELS[label]}">${label}</span>`;
+    }
+    let out = label;
+    const substringRules = [
+      ["negative gearing", "negativeGearing"],
+      ["quarantined", "negativeGearing"],
+      ["(P&I)", "piVsIo", "P&I"], // 3rd item = the exact text to wrap, if different from the match
+      ["Usable equity", "equity"],
+      ["LVR", "lvr"],
+    ];
+    for (const [needle, termKey, wrapText] of substringRules) {
+      if (out.includes(needle) && !out.includes('data-term=')) {
+        const text = wrapText || needle;
+        out = out.replace(text, `<span class="term-link" data-term="${termKey}">${text}</span>`);
+      }
+    }
+    return out;
+  }
+
   function breakdownRows(rows) {
     return rows
       .map(([label, amount, isCost, isTotal]) => {
         const cls = isTotal ? "breakdown-row total" : "breakdown-row";
         const amtCls = amount < 0 ? "amount negative" : "amount";
-        return `<div class="${cls}"><span>${label}</span><span class="${amtCls} tabular">${fmt$signed(amount)}</span></div>`;
+        return `<div class="${cls}"><span>${linkTerms(label)}</span><span class="${amtCls} tabular">${fmt$signed(amount)}</span></div>`;
       })
       .join("");
   }
@@ -326,6 +388,18 @@
   // ---------------------------------------------------------------------
   // MORTGAGE tab
   // ---------------------------------------------------------------------
+  function renderStressTest(loanAmount, actualRate, termYears, frequency, repaymentType, freqLabel) {
+    const deltas = [-1, 0, 1, 2, 3];
+    const rows = deltas.map((delta) => {
+      const rate = Math.max(actualRate + delta, 0.1);
+      const r = C.mortgageSummary({ loanAmount, annualRatePct: rate, termYears, frequency, repaymentType });
+      const repayment = r.repaymentPerPeriod;
+      const label = delta === 0 ? `${rate.toFixed(2)}% (your rate)` : delta === 3 ? `${rate.toFixed(2)}% (bank's stress test)` : `${rate.toFixed(2)}%`;
+      return [label, repayment, false, delta === 0];
+    });
+    document.getElementById("mg-stress-test").innerHTML = breakdownRows(rows);
+  }
+
   document.getElementById("mg-calc").addEventListener("click", () => {
     const loanAmount = parseNum(document.getElementById("mg-loan").value);
     const annualRatePct = parseNum(document.getElementById("mg-rate").value) || 6;
@@ -372,6 +446,8 @@
       html += `<div class="breakdown-row total"><span>Payoff time</span><span class="amount">${years} yr ${months} mo</span></div>`;
       document.getElementById("mg-breakdown").innerHTML = html;
     }
+
+    renderStressTest(loanAmount, annualRatePct, termYears, frequency, repaymentType, freqLabel);
 
     document.getElementById("mg-results").classList.remove("hidden");
     saveState();
@@ -629,11 +705,127 @@
   });
 
   // ---------------------------------------------------------------------
+  // ---------------------------------------------------------------------
+  // COMPARE tab
+  // ---------------------------------------------------------------------
+  const COMPARE_KEY = "property-planner-compare-v1";
+  let compareList = [];
+
+  function loadCompareList() {
+    try {
+      const raw = localStorage.getItem(COMPARE_KEY);
+      compareList = raw ? JSON.parse(raw) : [];
+    } catch (e) { compareList = []; }
+  }
+  function saveCompareList() {
+    try { localStorage.setItem(COMPARE_KEY, JSON.stringify(compareList)); } catch (e) {}
+  }
+
+  function computeCompareSnapshot(entry) {
+    const D = R.DEFAULT_INVESTMENT;
+    return C.investmentAnalysis({
+      price: entry.price,
+      depositPct: entry.depositPct,
+      state: entry.state,
+      annualRatePct: entry.rate,
+      loanTermYears: 30,
+      offsetBalance: 0,
+      renovationCost: 0,
+      miscFees: D.miscFees,
+      buildingInsuranceAnnual: D.buildingInsuranceAnnual,
+      landlordInsuranceAnnual: D.landlordInsuranceAnnual,
+      propertyMgmtPct: D.propertyMgmtPct,
+      leasingFeeAnnual: D.leasingFeeAnnual,
+      vacancyWeeks: D.vacancyWeeks,
+      landTaxAnnual: D.landTaxAnnual,
+      stratLeviesMonthly: D.stratLeviesMonthly,
+      maintenanceMonthly: D.maintenanceMonthly,
+      otherExpensesAnnual: D.otherExpensesAnnual,
+      lowerRentWeekly: entry.rentWeekly,
+      higherRentWeekly: entry.rentWeekly,
+      taxRatePct: D.taxRatePct,
+      depreciationAnnual: D.depreciationAnnual,
+      growthCagrPct: D.growthCagrPct,
+      negativeGearingQuarantined: true,
+    });
+  }
+
+  function renderCompareList() {
+    const listEl = document.getElementById("cp-list");
+    if (compareList.length === 0) {
+      listEl.innerHTML = '<div class="compare-empty">No properties saved yet. Add one above to start comparing.</div>';
+      return;
+    }
+    const snapshots = compareList.map((entry) => ({ entry, result: computeCompareSnapshot(entry) }));
+    const bestCashflow = Math.max(...snapshots.map((s) => s.result.lower.cashflowBeforeTaxWeekly));
+
+    listEl.innerHTML = snapshots
+      .map(({ entry, result }) => {
+        const s = result.lower;
+        const isBest = s.cashflowBeforeTaxWeekly === bestCashflow && compareList.length > 1;
+        const cfCls = s.cashflowBeforeTaxWeekly >= 0 ? "positive" : "negative";
+        return `
+          <div class="compare-card ${isBest ? "best" : ""}">
+            <div class="compare-card-header">
+              <div>
+                <div class="compare-card-title">${entry.label || "Untitled property"}</div>
+                <div class="compare-card-sub">${entry.state} · ${fmt$(entry.price)} · ${fmt$(entry.rentWeekly)}/wk rent</div>
+              </div>
+              ${isBest ? '<span class="compare-best-badge">BEST CASHFLOW</span>' : ""}
+              <button class="compare-remove" data-remove-id="${entry.id}">×</button>
+            </div>
+            <div class="compare-grid">
+              <div><div class="compare-stat-label">Deposit</div><div class="compare-stat-value">${fmt$(result.deposit)}</div></div>
+              <div><div class="compare-stat-label">Total cash required</div><div class="compare-stat-value">${fmt$(result.totalCapitalRequired)}</div></div>
+              <div><div class="compare-stat-label">Yield</div><div class="compare-stat-value">${s.yieldPct.toFixed(2)}%</div></div>
+              <div><div class="compare-stat-label">Cashflow before tax</div><div class="compare-stat-value ${cfCls}">${fmt$signed(s.cashflowBeforeTaxWeekly)}/wk</div></div>
+            </div>
+          </div>`;
+      })
+      .join("");
+
+    listEl.querySelectorAll("[data-remove-id]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        compareList = compareList.filter((e) => e.id !== btn.dataset.removeId);
+        saveCompareList();
+        renderCompareList();
+      });
+    });
+  }
+
+  document.getElementById("cp-add").addEventListener("click", () => {
+    const price = parseNum(document.getElementById("cp-price").value);
+    const rentWeekly = parseNum(document.getElementById("cp-rent").value);
+    if (price <= 0 || rentWeekly <= 0) {
+      alert("Enter a price and expected rent first.");
+      return;
+    }
+    compareList.push({
+      id: "cmp-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+      label: document.getElementById("cp-label").value.trim(),
+      price,
+      depositPct: parseNum(document.getElementById("cp-deposit-pct").value) || 20,
+      rentWeekly,
+      state: selectedState.cp,
+      rate: parseNum(document.getElementById("cp-rate").value) || 6.5,
+    });
+    if (compareList.length > 6) compareList = compareList.slice(compareList.length - 6);
+    saveCompareList();
+    renderCompareList();
+    document.getElementById("cp-label").value = "";
+    document.getElementById("cp-price").value = "";
+    document.getElementById("cp-rent").value = "";
+  });
+
+  loadCompareList();
+  renderCompareList();
+
+  // ---------------------------------------------------------------------
   // RATES tab
   // ---------------------------------------------------------------------
   function renderRatesTab() {
     const upfrontLabels = {
-      conveyancing: "Conveyancing / legal",
+      conveyancing: '<span class="term-link" data-term="conveyancing">Conveyancing</span> / legal',
       buildingPestInspection: "Building & pest inspection",
       loanApplicationFee: "Loan application fee",
       mortgageRegistrationFee: "Mortgage registration",
@@ -678,6 +870,19 @@
         const display = suffix === "%" || suffix === "wks" ? val : val.toLocaleString("en-AU");
         return `<div class="row"><span class="row-label">${label}</span><span class="row-value">${suffix === "" ? "$" + display : display + (suffix ? " " + suffix : "")}</span></div>`;
       })
+      .join("");
+
+    const glossaryEl = document.getElementById("rates-glossary");
+    glossaryEl.innerHTML = Object.entries(window.PropGlossary)
+      .sort((a, b) => a[1].term.localeCompare(b[1].term))
+      .map(([key, entry]) => `
+        <div class="glossary-row term-link" data-term="${key}">
+          <div>
+            <div class="glossary-row-term">${entry.term}</div>
+            ${entry.full !== entry.term ? `<div class="glossary-row-full">${entry.full}</div>` : ""}
+          </div>
+          <span class="chevron">›</span>
+        </div>`)
       .join("");
 
     document.getElementById("rates-verified-date").textContent = R.RATES_LAST_VERIFIED;
@@ -797,7 +1002,125 @@
   });
   document.querySelectorAll('.switch input').forEach((inp) => inp.addEventListener("change", saveState));
 
+  // ---------------------------------------------------------------------
+  // Welcome overlay (first run only, re-openable from Rates tab)
+  // ---------------------------------------------------------------------
+  const welcomeOverlay = document.getElementById("welcome-overlay");
+  function openWelcome() { welcomeOverlay.classList.add("open"); }
+  function closeWelcome() {
+    welcomeOverlay.classList.remove("open");
+    try { localStorage.setItem("property-planner-welcome-seen", "1"); } catch (e) {}
+  }
+  document.getElementById("welcome-dismiss").addEventListener("click", closeWelcome);
+  document.getElementById("show-welcome-again").addEventListener("click", openWelcome);
+
+  // ---------------------------------------------------------------------
+  // Guided walkthrough — chains Afford → Invest → Costs → Journey, carrying
+  // the computed numbers forward automatically at each step, so the person
+  // never has to re-type the same price into multiple tabs.
+  // ---------------------------------------------------------------------
+  const GUIDED_STEPS = [
+    { tab: "afford", label: "Step 1 of 4 · Affordability" },
+    { tab: "invest", label: "Step 2 of 4 · Does it stack up?" },
+    { tab: "costs", label: "Step 3 of 4 · Real cash needed" },
+    { tab: "journey", label: "Step 4 of 4 · The long game" },
+  ];
+  let guidedActive = false;
+  let guidedStepIndex = 0;
+
+  function switchToTab(tabName) {
+    const btn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+    if (btn) btn.click();
+  }
+
+  function updateGuidedBanner() {
+    const banner = document.getElementById("guided-banner");
+    if (!guidedActive) {
+      banner.classList.add("hidden");
+      document.body.classList.remove("guided-mode");
+      return;
+    }
+    const step = GUIDED_STEPS[guidedStepIndex];
+    document.getElementById("guided-banner-label").textContent = step.label;
+    document.getElementById("guided-progress-fill").style.width = `${((guidedStepIndex + 1) / GUIDED_STEPS.length) * 100}%`;
+    banner.classList.remove("hidden");
+    document.body.classList.add("guided-mode");
+  }
+
+  function setGuidedButtonsVisible(visible) {
+    ["af-guided-continue", "in-guided-continue", "co-guided-continue", "jy-guided-continue"].forEach((id) => {
+      document.getElementById(id).classList.toggle("hidden", !visible);
+    });
+  }
+
+  function startGuidedWalkthrough() {
+    guidedActive = true;
+    guidedStepIndex = 0;
+    closeWelcome();
+    setGuidedButtonsVisible(true);
+    updateGuidedBanner();
+    switchToTab("afford");
+    document.getElementById("af-borrow-panel").classList.remove("hidden");
+    bpChevron.textContent = "⌄";
+    document.getElementById("af-calc").click();
+    window.scrollTo(0, 0);
+  }
+
+  function exitGuidedMode() {
+    guidedActive = false;
+    setGuidedButtonsVisible(false);
+    updateGuidedBanner();
+  }
+
+  document.getElementById("welcome-start-guided").addEventListener("click", startGuidedWalkthrough);
+  document.getElementById("show-guided-again").addEventListener("click", startGuidedWalkthrough);
+  document.getElementById("guided-exit").addEventListener("click", exitGuidedMode);
+
+  document.getElementById("af-guided-continue").addEventListener("click", () => {
+    const price = parseNum(document.getElementById("af-max-price").textContent);
+    document.getElementById("in-price").value = price.toLocaleString("en-AU");
+    guidedStepIndex = 1;
+    updateGuidedBanner();
+    switchToTab("invest");
+    document.getElementById("in-calc").click();
+    window.scrollTo(0, 0);
+  });
+
+  document.getElementById("in-guided-continue").addEventListener("click", () => {
+    const price = parseNum(document.getElementById("in-price").value);
+    document.getElementById("co-price").value = price.toLocaleString("en-AU");
+    if (lastInvestResult) {
+      document.getElementById("co-loan").value = Math.round(lastInvestResult.loanAmount).toLocaleString("en-AU");
+    }
+    guidedStepIndex = 2;
+    updateGuidedBanner();
+    switchToTab("costs");
+    document.getElementById("co-calc").click();
+    window.scrollTo(0, 0);
+  });
+
+  document.getElementById("co-guided-continue").addEventListener("click", () => {
+    const price = parseNum(document.getElementById("co-price").value);
+    const depositPct = parseNum(document.getElementById("in-deposit-pct").value) || 20;
+    document.getElementById("jy-price1").value = price.toLocaleString("en-AU");
+    document.getElementById("jy-deposit1").value = depositPct;
+    guidedStepIndex = 3;
+    updateGuidedBanner();
+    switchToTab("journey");
+    document.getElementById("jy-calc").click();
+    window.scrollTo(0, 0);
+  });
+
+  document.getElementById("jy-guided-continue").addEventListener("click", () => {
+    exitGuidedMode();
+    window.scrollTo(0, 0);
+  });
+
   restoreState();
+
+  try {
+    if (!localStorage.getItem("property-planner-welcome-seen")) openWelcome();
+  } catch (e) { /* storage unavailable - skip first-run welcome */ }
 
   // Auto-run each calculator once on load so the pre-filled example is
   // immediately useful — the person can see real numbers straight away and

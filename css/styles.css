@@ -523,17 +523,17 @@ html[data-theme="dark"] .status-banner.neutral { color: #E8CB8C; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
   border: none;
   background: transparent;
   color: var(--ink-faint);
   font-family: var(--font-body);
-  font-size: 10.5px;
+  font-size: 9.5px;
   font-weight: 500;
   cursor: pointer;
   padding-top: 8px;
 }
-.tab-btn svg { width: 24px; height: 24px; }
+.tab-btn svg { width: 21px; height: 21px; }
 .tab-btn.active { color: var(--accent); }
 .tab-btn.active svg { stroke: var(--accent); }
 
@@ -624,6 +624,214 @@ html[data-theme="dark"] .status-banner.neutral { color: #E8CB8C; }
 }
 .sheet-option:active { background: var(--paper); }
 .sheet-option.selected { color: var(--accent); font-weight: 600; }
+
+/* Tappable glossary term */
+.term-link {
+  color: var(--accent);
+  border-bottom: 1px dotted var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.term-link:active { opacity: 0.6; }
+
+.glossary-sheet-body {
+  padding: 0 20px 8px;
+}
+.glossary-sheet-full {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+  margin-bottom: 8px;
+}
+.glossary-sheet-def {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+/* Glossary browse list (Rates tab) */
+.glossary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+.glossary-row:last-child { border-bottom: none; }
+.glossary-row:active { background: var(--paper); }
+.glossary-row-term { font-size: 15px; color: var(--ink); font-weight: 500; }
+.glossary-row-full { font-size: 12px; color: var(--ink-faint); margin-top: 1px; }
+
+/* Step timeline (buying process roadmap, welcome guide) */
+.step-list {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+.step-row {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.step-row:last-child { border-bottom: none; }
+.step-number {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.step-content { flex: 1; min-width: 0; }
+.step-title { font-size: 14.5px; font-weight: 600; color: var(--ink); margin-bottom: 3px; }
+.step-body { font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; }
+.step-tab-hint {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-tint);
+  padding: 3px 9px;
+  border-radius: 20px;
+}
+
+/* Welcome overlay (first-run) */
+.welcome-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 23, 31, 0.55);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.welcome-overlay.open { opacity: 1; pointer-events: auto; }
+.welcome-card {
+  background: var(--surface);
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  border-radius: 22px 22px 0 0;
+  padding: 26px 22px calc(var(--safe-bottom) + 14px);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.welcome-overlay.open .welcome-card { transform: translateY(0); }
+.welcome-scroll {
+  overflow-y: auto;
+  min-height: 0;
+}
+.welcome-card .btn-primary { flex-shrink: 0; }
+
+/* Guided walkthrough banner */
+.guided-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  max-width: 560px;
+  margin: 0 auto;
+  background: #14171F;
+  color: white;
+  padding: calc(var(--safe-top) + 10px) 16px 10px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.guided-banner.hidden { display: none; }
+.guided-banner-text { flex: 1; min-width: 0; }
+.guided-banner-label { font-size: 13px; font-weight: 600; }
+.guided-progress-track { height: 3px; background: rgba(255,255,255,0.22); border-radius: 2px; margin-top: 7px; overflow: hidden; }
+.guided-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.35s ease; }
+.guided-exit-btn {
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.16);
+  border: none;
+  color: white;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 7px 13px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+body.guided-mode .screen { padding-top: calc(var(--safe-top) + 60px); }
+.guided-continue-btn { background: var(--accent); }
+.welcome-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.welcome-subtitle {
+  font-size: 14px;
+  color: var(--ink-soft);
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+
+/* Compare tab cards */
+.compare-card {
+  background: var(--surface);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-top: 12px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+}
+.compare-card.best { box-shadow: 0 0 0 2px var(--positive), var(--shadow-card); }
+.compare-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+.compare-card-title { font-size: 16px; font-weight: 600; color: var(--ink); }
+.compare-card-sub { font-size: 12px; color: var(--ink-faint); margin-top: 1px; }
+.compare-best-badge {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: white;
+  background: var(--positive);
+  padding: 3px 8px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+}
+.compare-remove {
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.compare-stat-label { font-size: 11px; color: var(--ink-faint); }
+.compare-stat-value { font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 1px; }
+.compare-stat-value.negative { color: var(--negative); }
+.compare-stat-value.positive { color: var(--positive); }
+.compare-empty {
+  text-align: center;
+  padding: 30px 20px;
+  color: var(--ink-faint);
+  font-size: 13.5px;
+}
 
 /* Utility */
 .mt-0 { margin-top: 0 !important; }
