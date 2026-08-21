@@ -2,6 +2,7 @@
 // Mortgage repayment math and the reverse affordability solver.
 
 const RatesModule = typeof require !== "undefined" ? require("./rates.js") : window.PropRates;
+const TaxModule = typeof require !== "undefined" ? require("./tax.js") : window.PropTax;
 
 // ---------------------------------------------------------------------------
 // Mortgage repayments
@@ -283,6 +284,8 @@ function investmentAnalysis({
   taxRatePct,
   depreciationAnnual,
   growthCagrPct,
+  negativeGearingQuarantined = false, // true for an established property bought now: from FY2027-28,
+                                        // losses can't offset salary — see the 2026 Budget reform
 }) {
   const deposit = price * (depositPct / 100);
   const loanAmount = price - deposit;
@@ -312,7 +315,14 @@ function investmentAnalysis({
 
     const deductibleExpenses = fixedAnnualExpenses + propertyMgmtAnnual + yr1Interest + depreciationAnnual;
     const taxableIncome = grossRentAnnual - vacancyCost - deductibleExpenses;
-    const taxEffectAnnual = -taxableIncome * (taxRatePct / 100); // positive = refund, negative = extra tax
+
+    // From FY2027-28, a loss on an established property bought after the 2026
+    // Budget can only offset other rental/capital-gains income, not salary —
+    // it's quarantined and carried forward rather than refunded now. A taxable
+    // PROFIT is unaffected either way; only the loss-offset direction changes.
+    const lossIsQuarantined = negativeGearingQuarantined && taxableIncome < 0;
+    const taxEffectAnnual = lossIsQuarantined ? 0 : -taxableIncome * (taxRatePct / 100);
+    const carriedForwardLoss = lossIsQuarantined ? -taxableIncome : 0;
     const cashflowAfterTaxAnnual = cashflowBeforeTaxAnnual + taxEffectAnnual;
 
     return {
@@ -327,6 +337,7 @@ function investmentAnalysis({
       yieldPct,
       taxableIncome,
       taxEffectAnnual,
+      carriedForwardLoss,
       cashflowAfterTaxAnnual,
       cashflowAfterTaxWeekly: cashflowAfterTaxAnnual / 52,
       cashflowAfterTaxMonthly: cashflowAfterTaxAnnual / 12,
@@ -347,6 +358,153 @@ function investmentAnalysis({
   };
 }
 
+// Invert the P&I repayment formula: given a monthly amount available for
+// repayments, find the loan size that produces exactly that repayment.
+function maxLoanFromRepayment(monthlyRepayment, annualRatePct, termYears) {
+  if (monthlyRepayment <= 0) return 0;
+  const periodRate = annualRatePct / 100 / 12;
+  const n = termYears * 12;
+  if (periodRate === 0) return monthlyRepayment * n;
+  return (monthlyRepayment * (1 - Math.pow(1 + periodRate, -n))) / periodRate;
+}
+
+// ---------------------------------------------------------------------------
+// Borrowing power (serviceability) estimate
+//
+// Mirrors the real structure lenders use: assessed income (with shading on
+// bonus/overtime and rental income) minus tax minus living expenses minus
+// existing debt commitments minus HECS, tested against the proposed loan at
+// the actual rate PLUS the APRA serviceability buffer — not the real rate.
+//
+// This is a simplification of real bank serviceability models (every lender's
+// calculator differs), not a substitute for a formal pre-approval.
+// ---------------------------------------------------------------------------
+
+const APRA_SERVICEABILITY_BUFFER_PCT = 3;
+
+function borrowingPower({
+  grossSalaryAnnual,
+  otherIncomeAnnual = 0,
+  otherIncomeShadePct = 80,
+  isInvestmentPurchase = false,
+  rentalIncomeWeekly = 0,
+  rentalIncomeShadePct = 80,
+  hasHecsDebt = false,
+  dependents = 0,
+  livingExpensesMonthly, // if omitted, uses the simplified default
+  creditCardLimitsTotal = 0,
+  personalLoanMonthly = 0,
+  otherLoanRepaymentsMonthly = 0,
+  existingLoanBalancesTotal = 0, // optional, for the DTI check only
+  annualRatePct,
+  termYears,
+}) {
+  const shadedOtherIncome = otherIncomeAnnual * (otherIncomeShadePct / 100);
+  const taxableEmploymentIncome = grossSalaryAnnual + shadedOtherIncome;
+
+  const netEmploymentIncome = TaxModule.netAnnualIncome(taxableEmploymentIncome, hasHecsDebt);
+
+  const shadedRentalAnnual = isInvestmentPurchase ? rentalIncomeWeekly * 52 * (rentalIncomeShadePct / 100) : 0;
+
+  const netAnnualIncomeTotal = netEmploymentIncome + shadedRentalAnnual;
+  const netMonthlyIncome = netAnnualIncomeTotal / 12;
+
+  const livingExpenses = livingExpensesMonthly != null && livingExpensesMonthly > 0
+    ? livingExpensesMonthly
+    : TaxModule.simplifiedLivingExpenseMonthly(dependents);
+
+  const creditCardMonthlyCommitment = creditCardLimitsTotal * 0.03; // 3% of limit/month, regardless of balance
+  const totalDebtCommitmentsMonthly = creditCardMonthlyCommitment + personalLoanMonthly + otherLoanRepaymentsMonthly;
+
+  const netMonthlySurplus = netMonthlyIncome - livingExpenses - totalDebtCommitmentsMonthly;
+
+  const assessedRatePct = annualRatePct + APRA_SERVICEABILITY_BUFFER_PCT;
+  const maxLoan = Math.max(maxLoanFromRepayment(Math.max(netMonthlySurplus, 0), assessedRatePct, termYears), 0);
+
+  const grossAnnualIncome = grossSalaryAnnual + otherIncomeAnnual + (isInvestmentPurchase ? rentalIncomeWeekly * 52 : 0);
+  const dti = grossAnnualIncome > 0 ? (existingLoanBalancesTotal + maxLoan) / grossAnnualIncome : 0;
+
+  return {
+    taxableEmploymentIncome,
+    netEmploymentIncome,
+    shadedRentalAnnual,
+    netAnnualIncomeTotal,
+    netMonthlyIncome,
+    livingExpenses,
+    creditCardMonthlyCommitment,
+    totalDebtCommitmentsMonthly,
+    netMonthlySurplus,
+    assessedRatePct,
+    maxLoan: Math.floor(maxLoan / 100) * 100, // round down to nearest $100, stay conservative
+    dti,
+    dtiExceedsSix: dti >= 6,
+  };
+}
+
+// Remaining loan balance after a number of years of P&I repayments.
+function loanBalanceAfterYears(loanAmount, annualRatePct, termYears, yearsElapsed, frequency = "monthly") {
+  const n = FREQUENCIES[frequency];
+  const periodRate = annualRatePct / 100 / n;
+  const repayment = repaymentPI(loanAmount, annualRatePct, termYears, frequency);
+  const periodsElapsed = Math.min(yearsElapsed * n, termYears * n);
+  let balance = loanAmount;
+  for (let i = 0; i < periodsElapsed; i++) {
+    const interest = balance * periodRate;
+    balance = Math.max(balance - (repayment - interest), 0);
+  }
+  return balance;
+}
+
+// ---------------------------------------------------------------------------
+// Investment-then-home journey: property 1 (investment, bought now) grows in
+// value, some of that growth becomes usable equity via a later refinance,
+// which — combined with any additional cash saved — funds the deposit on
+// property 2 (a future owner-occupied home).
+// ---------------------------------------------------------------------------
+
+function investmentThenHomeJourney({
+  price1,
+  depositPct1,
+  annualRatePct1,
+  termYears1,
+  growthCagrPct1,
+  yearsUntilProperty2,
+  equityReleaseLVRPct = 80,
+  additionalSavingsByThen = 0,
+  property2State,
+  property2MaxLoan,
+  property2IsFirstHomeBuyer = false,
+}) {
+  const deposit1 = price1 * (depositPct1 / 100);
+  const loan1 = price1 - deposit1;
+  const value1AtYearN = price1 * Math.pow(1 + growthCagrPct1 / 100, yearsUntilProperty2);
+  const loanBalanceAtYearN = loanBalanceAfterYears(loan1, annualRatePct1, termYears1, yearsUntilProperty2);
+  const usableEquity = Math.max(value1AtYearN * (equityReleaseLVRPct / 100) - loanBalanceAtYearN, 0);
+  const totalDepositAvailable = usableEquity + additionalSavingsByThen;
+
+  const property2 = solveMaxPropertyPrice({
+    maxLoanAmount: property2MaxLoan,
+    availableCash: totalDepositAvailable,
+    state: property2State,
+    isFirstHomeBuyer: property2IsFirstHomeBuyer,
+    lmiWaived: false,
+  });
+
+  return {
+    property1: { price: price1, deposit: deposit1, loan: loan1 },
+    atYearN: {
+      years: yearsUntilProperty2,
+      value: value1AtYearN,
+      loanBalance: loanBalanceAtYearN,
+      equityGrown: value1AtYearN - price1,
+      usableEquity,
+      additionalSavingsByThen,
+      totalDepositAvailable,
+    },
+    property2,
+  };
+}
+
 const PropCalcExports = {
   mortgageSummary,
   upfrontCosts,
@@ -354,6 +512,10 @@ const PropCalcExports = {
   canAfford,
   firstYearInterest,
   investmentAnalysis,
+  maxLoanFromRepayment,
+  borrowingPower,
+  loanBalanceAfterYears,
+  investmentThenHomeJourney,
   FREQUENCIES,
 };
 

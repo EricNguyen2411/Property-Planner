@@ -250,6 +250,25 @@ const STATE_NAMES = {
   NT: "Northern Territory",
 };
 
+// ---------------------------------------------------------------------------
+// Rentvesting impact on first-home-buyer eligibility for a LATER
+// owner-occupied purchase, if an investment property is bought first.
+// Source: cross-state comparison of FHB stamp duty concession occupancy
+// rules (August 2026). The federal First Home Guarantee (5% deposit, no LMI)
+// is lost in EVERY state the moment you own any property, investment or not.
+// ---------------------------------------------------------------------------
+
+const RENTVESTING_FHB_IMPACT = {
+  NSW: { retainsEligibility: false, note: "Buying an investment property first forfeits your First Home Buyers Assistance stamp duty concession for a later home purchase." },
+  QLD: { retainsEligibility: false, note: "Buying an investment property first forfeits your First Home Concession stamp duty relief for a later home purchase." },
+  VIC: { retainsEligibility: true, note: "VIC's First Home Buyer Duty Reduction isn't tied to never having owned an investment property — you may still qualify when you later buy a home to live in." },
+  WA: { retainsEligibility: true, note: "WA's First Home Owner Rate of Duty isn't tied to never having owned an investment property — you may still qualify when you later buy a home to live in." },
+  SA: { retainsEligibility: null, note: "Rules aren't confirmed here — check current eligibility with Revenue SA before assuming either way." },
+  TAS: { retainsEligibility: null, note: "Rules aren't confirmed here — check current eligibility with the State Revenue Office before assuming either way." },
+  ACT: { retainsEligibility: null, note: "Rules aren't confirmed here — check current eligibility with the ACT Revenue Office before assuming either way." },
+  NT: { retainsEligibility: null, note: "Rules aren't confirmed here — check current eligibility with the NT Territory Revenue Office before assuming either way." },
+};
+
 const PropRatesExports = {
   standardStampDuty,
   fhbStampDuty,
@@ -261,6 +280,7 @@ const PropRatesExports = {
   DEFAULT_INVESTMENT,
   STATE_NAMES,
   FHB_CONCESSIONS,
+  RENTVESTING_FHB_IMPACT,
   RATES_LAST_VERIFIED,
 };
 

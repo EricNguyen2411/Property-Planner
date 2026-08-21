@@ -112,8 +112,8 @@
   const sheetBackdrop = document.getElementById("sheet-backdrop");
   const stateSheet = document.getElementById("state-sheet");
   const stateSheetList = document.getElementById("state-sheet-list");
-  let activeStateTarget = null; // 'af', 'co' or 'in'
-  let selectedState = { af: "NSW", co: "NSW", in: "NSW" };
+  let activeStateTarget = null; // 'af', 'co', 'in' or 'jy'
+  let selectedState = { af: "NSW", co: "NSW", in: "NSW", jy: "NSW" };
 
   function renderStateSheetList() {
     stateSheetList.innerHTML = "";
@@ -145,6 +145,7 @@
   document.getElementById("af-state-row").addEventListener("click", () => openSheet("af"));
   document.getElementById("co-state-row").addEventListener("click", () => openSheet("co"));
   document.getElementById("in-state-row").addEventListener("click", () => openSheet("in"));
+  document.getElementById("jy-state-row").addEventListener("click", () => openSheet("jy"));
 
   // FHB toggle shows/hides "no LMI" row
   document.getElementById("af-fhb").addEventListener("change", (e) => {
@@ -176,6 +177,83 @@
       <div class="ledger-notch" style="left:${loanPct}%; width:${costsPct}%"></div>
     `;
   }
+
+  // ---------------------------------------------------------------------
+  // BORROWING POWER panel (inside Afford tab)
+  // ---------------------------------------------------------------------
+  const bpToggleRow = document.getElementById("af-borrow-toggle-row");
+  const bpPanel = document.getElementById("af-borrow-panel");
+  const bpChevron = document.getElementById("af-borrow-chevron");
+  bpToggleRow.addEventListener("click", () => {
+    const isHidden = bpPanel.classList.contains("hidden");
+    bpPanel.classList.toggle("hidden");
+    bpChevron.textContent = isHidden ? "⌄" : "›";
+  });
+
+  document.getElementById("bp-is-investment").addEventListener("change", (e) => {
+    document.getElementById("bp-rent-row").classList.toggle("hidden", !e.target.checked);
+    document.getElementById("bp-rent-shade-row").classList.toggle("hidden", !e.target.checked);
+  });
+
+  let lastBorrowingPowerResult = null;
+
+  document.getElementById("bp-calc").addEventListener("click", () => {
+    const grossSalaryAnnual = parseNum(document.getElementById("bp-salary").value);
+    if (grossSalaryAnnual <= 0) {
+      alert("Enter your gross salary first.");
+      return;
+    }
+    const isInvestmentPurchase = document.getElementById("bp-is-investment").checked;
+    const result = C.borrowingPower({
+      grossSalaryAnnual,
+      otherIncomeAnnual: parseNum(document.getElementById("bp-other-income").value),
+      isInvestmentPurchase,
+      rentalIncomeWeekly: parseNum(document.getElementById("bp-rent").value),
+      rentalIncomeShadePct: parseNum(document.getElementById("bp-rent-shade").value) || 80,
+      hasHecsDebt: document.getElementById("bp-hecs").checked,
+      dependents: parseNum(document.getElementById("bp-dependents").value),
+      livingExpensesMonthly: parseNum(document.getElementById("bp-living").value) || null,
+      creditCardLimitsTotal: parseNum(document.getElementById("bp-cc-limit").value),
+      personalLoanMonthly: parseNum(document.getElementById("bp-personal-loan").value),
+      otherLoanRepaymentsMonthly: parseNum(document.getElementById("bp-other-loan").value),
+      existingLoanBalancesTotal: parseNum(document.getElementById("bp-existing-balances").value),
+      annualRatePct: parseNum(document.getElementById("bp-rate").value) || 6.5,
+      termYears: parseNum(document.getElementById("bp-term").value) || 30,
+    });
+    lastBorrowingPowerResult = result;
+
+    document.getElementById("bp-max-loan").textContent = fmt$(result.maxLoan);
+    document.getElementById("bp-breakdown").innerHTML =
+      breakdownRows([
+        ["Net income (incl. shaded rent)", result.netAnnualIncomeTotal, false],
+        ["Living expenses", -result.livingExpenses * 12, true],
+        ["Existing debt commitments", -result.totalDebtCommitmentsMonthly * 12, true],
+      ]) +
+      `<div class="breakdown-row" style="color:var(--ink-faint); font-size:12.5px;"><span>Assessed at ${result.assessedRatePct.toFixed(2)}% p.a. (rate + 3% buffer)</span><span></span></div>`;
+
+    const dtiStatus = document.getElementById("bp-dti-status");
+    if (result.dtiExceedsSix) {
+      dtiStatus.className = "status-banner neutral";
+      dtiStatus.textContent = `Debt-to-income ratio ~${result.dti.toFixed(1)}x — at or above the 6x threshold lenders scrutinise closely.`;
+      dtiStatus.classList.remove("hidden");
+    } else {
+      dtiStatus.classList.add("hidden");
+    }
+
+    document.getElementById("bp-results").classList.remove("hidden");
+  });
+
+  document.getElementById("bp-use").addEventListener("click", () => {
+    if (!lastBorrowingPowerResult) return;
+    document.getElementById("af-loan").value = lastBorrowingPowerResult.maxLoan.toLocaleString("en-AU");
+    if (document.getElementById("bp-is-investment").checked) {
+      document.querySelectorAll("#af-use button").forEach((b) => b.classList.toggle("active", b.dataset.val === "investor"));
+    }
+    document.getElementById("af-calc").click();
+    document.getElementById("af-borrow-panel").classList.add("hidden");
+    bpChevron.textContent = "›";
+    document.getElementById("af-loan").scrollIntoView({ behavior: "smooth", block: "center" });
+  });
 
   // ---------------------------------------------------------------------
   // AFFORD tab
@@ -427,6 +505,7 @@
       taxRatePct: document.getElementById("in-tax-rate").value !== "" ? parseNum(document.getElementById("in-tax-rate").value) : D.taxRatePct,
       depreciationAnnual: parseNum(document.getElementById("in-depreciation").value),
       growthCagrPct: parseNum(document.getElementById("in-growth").value) || D.growthCagrPct,
+      negativeGearingQuarantined: segVal("in-property-type") === "established",
     });
 
     lastInvestResult = result;
@@ -470,11 +549,15 @@
       btStatus.textContent = `${fmt$signed(s.cashflowBeforeTaxAnnual / 52)}/wk · ${fmt$signed(s.cashflowBeforeTaxAnnual / 12)}/mo out of pocket`;
     }
 
-    document.getElementById("in-after-tax-breakdown").innerHTML = breakdownRows([
+    const afterTaxRows = [
       ["Cashflow before tax", s.cashflowBeforeTaxAnnual, false],
       [s.taxableIncome < 0 ? "Tax refund (negative gearing)" : "Extra tax payable", s.taxEffectAnnual, s.taxEffectAnnual < 0],
-      ["Cashflow after tax (annual)", s.cashflowAfterTaxAnnual, false, true],
-    ]);
+    ];
+    if (s.carriedForwardLoss > 0) {
+      afterTaxRows.push(["Loss carried forward (quarantined)", s.carriedForwardLoss, false]);
+    }
+    afterTaxRows.push(["Cashflow after tax (annual)", s.cashflowAfterTaxAnnual, false, true]);
+    document.getElementById("in-after-tax-breakdown").innerHTML = breakdownRows(afterTaxRows);
     const atStatus = document.getElementById("in-after-tax-status");
     if (s.cashflowAfterTaxAnnual >= 0) {
       atStatus.className = "status-banner positive";
@@ -484,6 +567,66 @@
       atStatus.textContent = `${fmt$signed(s.cashflowAfterTaxAnnual / 52)}/wk · ${fmt$signed(s.cashflowAfterTaxAnnual / 12)}/mo after tax`;
     }
   }
+
+  // ---------------------------------------------------------------------
+  // JOURNEY tab
+  // ---------------------------------------------------------------------
+  document.getElementById("jy-calc").addEventListener("click", () => {
+    const price1 = parseNum(document.getElementById("jy-price1").value);
+    if (price1 <= 0) {
+      alert("Enter a purchase price for Property 1 first.");
+      return;
+    }
+    const result = C.investmentThenHomeJourney({
+      price1,
+      depositPct1: parseNum(document.getElementById("jy-deposit1").value) || 20,
+      annualRatePct1: parseNum(document.getElementById("jy-rate1").value) || 6.5,
+      termYears1: parseNum(document.getElementById("jy-term1").value) || 30,
+      growthCagrPct1: parseNum(document.getElementById("jy-growth1").value) || 6,
+      yearsUntilProperty2: parseNum(document.getElementById("jy-years").value) || 5,
+      equityReleaseLVRPct: parseNum(document.getElementById("jy-equity-lvr").value) || 80,
+      additionalSavingsByThen: parseNum(document.getElementById("jy-savings").value),
+      property2State: selectedState.jy,
+      property2MaxLoan: parseNum(document.getElementById("jy-loan2").value),
+      property2IsFirstHomeBuyer: false, // conservative default — see FHB impact panel
+    });
+
+    const y = result.atYearN;
+    document.getElementById("jy-property1-breakdown").innerHTML = breakdownRows([
+      ["Purchase price today", result.property1.price, false],
+      [`Estimated value in ${y.years} years`, y.value, false],
+      ["Remaining loan balance", -y.loanBalance, true],
+      [`Usable equity (at ${document.getElementById("jy-equity-lvr").value || 80}% LVR)`, y.usableEquity, false, true],
+    ]);
+
+    document.getElementById("jy-deposit2").textContent = fmt$(y.totalDepositAvailable);
+
+    const p2 = result.property2;
+    document.getElementById("jy-property2-breakdown").innerHTML = breakdownRows([
+      ["Usable equity from Property 1", y.usableEquity, false],
+      ["Additional savings", y.additionalSavingsByThen, false],
+      ["Borrowing capacity (entered)", p2.breakdown.loanAmount, false],
+      ["Stamp duty", -p2.breakdown.stampDuty, true],
+      ["LMI", -p2.breakdown.lmi, true],
+      ["Other purchase costs", -p2.breakdown.otherCostsTotal, true],
+      ["Maximum price for Property 2", p2.maxPrice, false, true],
+    ]);
+
+    const fhb = R.RENTVESTING_FHB_IMPACT[selectedState.jy];
+    const warningEl = document.getElementById("jy-fhb-warning");
+    if (fhb.retainsEligibility === false) {
+      warningEl.textContent = `In ${selectedState.jy}, buying the investment property first will likely cost you first-home stamp duty relief on Property 2.`;
+    } else if (fhb.retainsEligibility === true) {
+      warningEl.textContent = `In ${selectedState.jy}, you may still qualify for first-home stamp duty relief on Property 2 despite owning an investment property first.`;
+    } else {
+      warningEl.textContent = `In ${selectedState.jy}, it's not clear-cut whether you'll retain first-home stamp duty relief on Property 2 — confirm before relying on it.`;
+    }
+    document.getElementById("jy-fhb-detail").textContent =
+      fhb.note + " Separately, the federal First Home Guarantee (5% deposit, no LMI) is gone for Property 2 regardless of state, the moment Property 1 settles — this calculator already assumes standard (non-concession) duty and no LMI waiver for Property 2 to reflect that.";
+
+    document.getElementById("jy-results").classList.remove("hidden");
+    saveState();
+  });
 
   // ---------------------------------------------------------------------
   // RATES tab
@@ -664,6 +807,7 @@
   document.getElementById("mg-calc").click();
   document.getElementById("co-calc").click();
   document.getElementById("in-calc").click();
+  document.getElementById("jy-calc").click();
 
   // ---------------------------------------------------------------------
   // Register service worker

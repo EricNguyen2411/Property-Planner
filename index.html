@@ -36,6 +36,125 @@
     <div class="large-title">What can I afford?</div>
     <p class="screen-subtitle">Enter your loan capacity and savings — we'll work backwards through stamp duty, LMI and fees to your real maximum purchase price.</p>
 
+    <div class="eyebrow">Don't know your loan capacity?</div>
+    <div class="group">
+      <div class="row tappable" id="af-borrow-toggle-row">
+        <div>
+          <div class="row-label">Estimate it from my income</div>
+          <div class="row-sublabel">Salary, debts &amp; expenses → a real borrowing estimate</div>
+        </div>
+        <span class="chevron" id="af-borrow-chevron">›</span>
+      </div>
+    </div>
+
+    <div id="af-borrow-panel" class="hidden">
+      <div class="eyebrow">Income</div>
+      <div class="group">
+        <div class="row">
+          <span class="row-label">Gross salary</span>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp-salary" placeholder="110,000" value="110,000"><span>/yr</span></div>
+        </div>
+        <div class="row">
+          <div>
+            <div class="row-label">Other income</div>
+            <div class="row-sublabel">Bonus / overtime, shaded 80%</div>
+          </div>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp-other-income" placeholder="0"><span>/yr</span></div>
+        </div>
+        <div class="row">
+          <div>
+            <div class="row-label">This is for an investment property</div>
+            <div class="row-sublabel">Counts shaded rental income too</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="bp-is-investment" checked><span class="switch-track"></span></label>
+        </div>
+        <div class="row" id="bp-rent-row">
+          <span class="row-label">Expected rent</span>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp-rent" placeholder="550" value="550"><span>/wk</span></div>
+        </div>
+        <div class="row" id="bp-rent-shade-row">
+          <div>
+            <div class="row-label">Rental income shading</div>
+            <div class="row-sublabel">Lenders typically use 70-80%</div>
+          </div>
+          <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="bp-rent-shade" placeholder="80" value="80" style="text-align:right"><span>%</span></div>
+        </div>
+        <div class="row">
+          <span class="row-label">HECS / HELP debt</span>
+          <label class="switch"><input type="checkbox" id="bp-hecs"><span class="switch-track"></span></label>
+        </div>
+        <div class="row">
+          <span class="row-label">Dependents</span>
+          <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="bp-dependents" placeholder="0" value="0" style="text-align:right"></div>
+        </div>
+      </div>
+
+      <div class="eyebrow">Living expenses &amp; debts</div>
+      <div class="group">
+        <div class="row">
+          <div>
+            <div class="row-label">Living expenses</div>
+            <div class="row-sublabel">A simplified default is used if left blank — not the real bank HEM figure</div>
+          </div>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp-living" placeholder="2,200"><span>/mo</span></div>
+        </div>
+        <div class="row">
+          <div>
+            <div class="row-label">Credit card limits</div>
+            <div class="row-sublabel">Total across all cards, assessed at 3%/mo</div>
+          </div>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp-cc-limit" placeholder="10,000" value="10,000"></div>
+        </div>
+        <div class="row">
+          <span class="row-label">Personal loan repayments</span>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp-personal-loan" placeholder="0"><span>/mo</span></div>
+        </div>
+        <div class="row">
+          <div>
+            <div class="row-label">Other loan repayments</div>
+            <div class="row-sublabel">e.g. an existing mortgage</div>
+          </div>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp-other-loan" placeholder="0"><span>/mo</span></div>
+        </div>
+        <div class="row">
+          <div>
+            <div class="row-label">Existing loan balances</div>
+            <div class="row-sublabel">Optional, for the DTI check only</div>
+          </div>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp-existing-balances" placeholder="0"></div>
+        </div>
+      </div>
+
+      <div class="eyebrow">New loan</div>
+      <div class="group">
+        <div class="row">
+          <span class="row-label">Interest rate</span>
+          <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="bp-rate" placeholder="6.50" value="6.50" style="text-align:right"><span>% p.a.</span></div>
+        </div>
+        <div class="row">
+          <span class="row-label">Loan term</span>
+          <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="bp-term" placeholder="30" value="30" style="text-align:right"><span>years</span></div>
+        </div>
+      </div>
+
+      <button class="btn-secondary" id="bp-calc">Estimate my borrowing power</button>
+
+      <div id="bp-results" class="hidden">
+        <div class="hero-result">
+          <div class="hero-label">Estimated maximum loan</div>
+          <div class="hero-number tabular" id="bp-max-loan">$0</div>
+          <div class="hero-caption">at your rate + the 3% APRA serviceability buffer</div>
+        </div>
+        <div class="breakdown" id="bp-breakdown"></div>
+        <div class="status-banner" id="bp-dti-status"></div>
+        <button class="btn-primary" id="bp-use">Use this as my maximum loan</button>
+        <div class="info-note">
+          <span class="dot"></span>
+          <span>This mirrors the structure lenders use, but every lender's calculator differs — treat this as a realistic estimate for planning, not a pre-approval. Speak to a broker or lender for your actual borrowing capacity.</span>
+        </div>
+      </div>
+    </div>
+
     <div class="eyebrow">Your finances</div>
     <div class="group">
       <div class="row">
@@ -364,6 +483,16 @@
     <div class="group">
       <div class="row">
         <div>
+          <div class="row-label">Property type</div>
+          <div class="row-sublabel">Affects negative gearing from FY2027-28</div>
+        </div>
+        <div class="segmented" style="width:190px" id="in-property-type">
+          <button class="active" data-val="established">Established</button>
+          <button data-val="new">New build</button>
+        </div>
+      </div>
+      <div class="row">
+        <div>
           <div class="row-label">Marginal tax rate</div>
           <div class="row-sublabel">Your effective personal rate</div>
         </div>
@@ -411,7 +540,110 @@
 
       <div class="info-note">
         <span class="dot"></span>
-        <span>Cashflow before tax subtracts your full loan repayment (principal + interest) — what actually leaves your account. Cashflow after tax then adds back any tax refund from negative gearing, based on the interest-only portion of your repayment plus depreciation and other deductible costs. This isn't tax advice — check your figures with an accountant.</span>
+        <span>Cashflow before tax subtracts your full loan repayment (principal + interest) — what actually leaves your account. For a <strong>new build</strong>, cashflow after tax adds back a tax refund from negative gearing as usual. For an <strong>established</strong> property, the 2026 Budget's tax reform means a loss can no longer offset your salary from FY2027-28 onward — it's carried forward instead, to offset future rental or capital gains income only. This isn't tax advice — check your figures with an accountant.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== JOURNEY TAB ===================== -->
+  <section id="screen-journey" class="screen">
+    <div class="large-title">Your property journey</div>
+    <p class="screen-subtitle">Investment property now, home to live in later — see how equity from Property 1 could fund the deposit on Property 2.</p>
+
+    <div class="info-note">
+      <span class="dot"></span>
+      <span>Buying an investment property first affects your eligibility for first-home-buyer support later. The federal First Home Guarantee (5% deposit, no LMI) is lost in every state the moment you own any property. Full detail below once you calculate.</span>
+    </div>
+
+    <div class="eyebrow">Property 1 — investment, now</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Purchase price</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="jy-price1" placeholder="550,000" value="550,000"></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Deposit</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="jy-deposit1" placeholder="20" value="20" style="text-align:right"><span>%</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Interest rate</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="jy-rate1" placeholder="6.50" value="6.50" style="text-align:right"><span>% p.a.</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Loan term</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="jy-term1" placeholder="30" value="30" style="text-align:right"><span>years</span></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Growth rate</div>
+          <div class="row-sublabel">Estimated CAGR for this property</div>
+        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="jy-growth1" placeholder="6" value="6" style="text-align:right"><span>% p.a.</span></div>
+      </div>
+    </div>
+
+    <div class="eyebrow">The gap before Property 2</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Years until buying Property 2</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="jy-years" placeholder="5" value="5" style="text-align:right"><span>yrs</span></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Equity release LVR</div>
+          <div class="row-sublabel">How far lenders typically let you refinance to</div>
+        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="jy-equity-lvr" placeholder="80" value="80" style="text-align:right"><span>%</span></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Additional savings by then</div>
+          <div class="row-sublabel">Cash saved separately over those years</div>
+        </div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="jy-savings" placeholder="30,000" value="30,000"></div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Property 2 — your future home</div>
+    <div class="group">
+      <div class="row tappable" id="jy-state-row">
+        <span class="row-label">State / territory</span>
+        <span class="row-value" id="jy-state-value">NSW <span class="chevron">›</span></span>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Estimated future borrowing capacity</div>
+          <div class="row-sublabel">Run the Afford tab's income estimate for a future scenario, or enter your own</div>
+        </div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="jy-loan2" placeholder="700,000" value="700,000"></div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="jy-calc">Calculate my journey</button>
+
+    <div id="jy-results" class="hidden">
+      <div class="eyebrow">Property 1, at year of purchasing Property 2</div>
+      <div class="breakdown" id="jy-property1-breakdown"></div>
+
+      <div class="hero-result">
+        <div class="hero-label">Deposit available for Property 2</div>
+        <div class="hero-number tabular" id="jy-deposit2">$0</div>
+        <div class="hero-caption">released equity + additional savings</div>
+      </div>
+
+      <div class="eyebrow">Property 2 — maximum price</div>
+      <div class="breakdown" id="jy-property2-breakdown"></div>
+
+      <div class="eyebrow">First-home-buyer impact</div>
+      <div class="status-banner neutral" id="jy-fhb-warning"></div>
+      <div class="info-note">
+        <span class="dot"></span>
+        <span id="jy-fhb-detail"></span>
+      </div>
+
+      <div class="info-note">
+        <span class="dot"></span>
+        <span>This assumes you can refinance Property 1 up to your chosen LVR and that a lender approves the new loan — equity release and a second loan both depend on serviceability at the time, not just the numbers here. Treat this as a directional plan, not a guarantee.</span>
       </div>
     </div>
   </section>
@@ -469,6 +701,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/></svg>
       Invest
     </button>
+    <button class="tab-btn" data-tab="journey">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="18" r="2.5"/><circle cx="19" cy="6" r="2.5"/><path d="M7 16.5 17 7.5"/></svg>
+      Journey
+    </button>
     <button class="tab-btn" data-tab="rates">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
       Rates
@@ -486,6 +722,7 @@
 </div>
 
 <script src="js/rates.js"></script>
+<script src="js/tax.js"></script>
 <script src="js/calc.js"></script>
 <script src="js/app.js"></script>
 </body>

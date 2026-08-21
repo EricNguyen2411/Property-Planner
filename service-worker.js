@@ -1,11 +1,12 @@
 // Bump this on every deployed change so the browser detects an update.
-const CACHE_VERSION = "property-planner-v4";
+const CACHE_VERSION = "property-planner-v5";
 
 const ASSETS = [
   "./",
   "./index.html",
   "./css/styles.css",
   "./js/rates.js",
+  "./js/tax.js",
   "./js/calc.js",
   "./js/app.js",
   "./manifest.json",
