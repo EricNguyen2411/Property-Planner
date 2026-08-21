@@ -40,18 +40,18 @@
     <div class="group">
       <div class="row">
         <span class="row-label">Maximum loan amount</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="af-loan" placeholder="600,000"></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="af-loan" placeholder="600,000" value="600,000"></div>
       </div>
       <div class="row">
         <span class="row-label">Savings / deposit available</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="af-cash" placeholder="120,000"></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="af-cash" placeholder="120,000" value="120,000"></div>
       </div>
       <div class="row">
         <div>
           <div class="row-label">Keep a cash buffer</div>
           <div class="row-sublabel">Leave some savings untouched</div>
         </div>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="af-buffer" placeholder="0"></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="af-buffer" placeholder="0" value="0"></div>
       </div>
     </div>
 
@@ -113,15 +113,15 @@
     <div class="group">
       <div class="row">
         <span class="row-label">Loan amount</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="mg-loan" placeholder="600,000"></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="mg-loan" placeholder="600,000" value="600,000"></div>
       </div>
       <div class="row">
         <span class="row-label">Interest rate</span>
-        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="mg-rate" placeholder="6.00" style="text-align:right"><span>% p.a.</span></div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="mg-rate" placeholder="6.00" style="text-align:right" value="6.00"><span>% p.a.</span></div>
       </div>
       <div class="row">
         <span class="row-label">Loan term</span>
-        <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="mg-term" placeholder="30" style="text-align:right"><span>years</span></div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="mg-term" placeholder="30" style="text-align:right" value="30"><span>years</span></div>
       </div>
       <div class="row">
         <span class="row-label">Repayment type</span>
@@ -147,14 +147,14 @@
           <div class="row-label">Extra repayment</div>
           <div class="row-sublabel">Per period, on top of minimum</div>
         </div>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="mg-extra" placeholder="0"></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="mg-extra" placeholder="0" value="0"></div>
       </div>
       <div class="row">
         <div>
           <div class="row-label">Offset account balance</div>
           <div class="row-sublabel">Reduces interest-charged balance</div>
         </div>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="mg-offset" placeholder="0"></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="mg-offset" placeholder="0" value="0"></div>
       </div>
     </div>
 
@@ -179,18 +179,18 @@
     <div class="group">
       <div class="row">
         <span class="row-label">Property price</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-price" placeholder="750,000"></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-price" placeholder="750,000" value="750,000"></div>
       </div>
       <div class="row">
         <span class="row-label">Loan amount</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-loan" placeholder="600,000"></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-loan" placeholder="600,000" value="600,000"></div>
       </div>
       <div class="row">
         <div>
           <div class="row-label">Your available cash</div>
           <div class="row-sublabel">Optional — checks if you can afford it</div>
         </div>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-cash" placeholder="150,000"></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-cash" placeholder="150,000" value="150,000"></div>
       </div>
     </div>
 
@@ -228,23 +228,23 @@
       <div class="group" id="co-ongoing-inputs">
         <div class="row">
           <span class="row-label">Council rates</span>
-          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-council" placeholder="175"><span>/mo</span></div>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-council" placeholder="175" value="175"><span>/mo</span></div>
         </div>
         <div class="row">
           <span class="row-label">Water rates</span>
-          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-water" placeholder="80"><span>/mo</span></div>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-water" placeholder="80" value="80"><span>/mo</span></div>
         </div>
         <div class="row">
           <span class="row-label">Home insurance</span>
-          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-insurance" placeholder="120"><span>/mo</span></div>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-insurance" placeholder="120" value="120"><span>/mo</span></div>
         </div>
         <div class="row">
           <span class="row-label">Strata / body corp</span>
-          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-strata" placeholder="0"><span>/mo</span></div>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-strata" placeholder="0" value="0"><span>/mo</span></div>
         </div>
         <div class="row">
           <span class="row-label">Maintenance</span>
-          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-maint" placeholder="150"><span>/mo</span></div>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-maint" placeholder="150" value="150"><span>/mo</span></div>
         </div>
       </div>
       <button class="btn-secondary" id="co-ongoing-calc">Add mortgage repayment for real monthly cost</button>
@@ -261,11 +261,11 @@
     <div class="group">
       <div class="row">
         <span class="row-label">Purchase price</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-price" placeholder="680,000"></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-price" placeholder="680,000" value="680,000"></div>
       </div>
       <div class="row">
         <span class="row-label">Deposit</span>
-        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-deposit-pct" placeholder="12" style="text-align:right"><span>%</span></div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-deposit-pct" placeholder="12" style="text-align:right" value="12"><span>%</span></div>
       </div>
       <div class="row tappable" id="in-state-row">
         <span class="row-label">State / territory</span>
@@ -273,17 +273,17 @@
       </div>
       <div class="row">
         <span class="row-label">Interest rate</span>
-        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-rate" placeholder="6.66" style="text-align:right"><span>% p.a.</span></div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-rate" placeholder="6.66" style="text-align:right" value="6.66"><span>% p.a.</span></div>
       </div>
       <div class="row">
         <span class="row-label">Loan term</span>
-        <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="in-term" placeholder="30" style="text-align:right"><span>years</span></div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="in-term" placeholder="30" style="text-align:right" value="30"><span>years</span></div>
       </div>
       <div class="row">
         <div>
           <div class="row-label">Offset balance</div>
         </div>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-offset" placeholder="0"></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-offset" placeholder="0" value="0"></div>
       </div>
     </div>
 
@@ -291,11 +291,11 @@
     <div class="group">
       <div class="row">
         <span class="row-label">Renovation cost</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-reno" placeholder="0"></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-reno" placeholder="0" value="0"></div>
       </div>
       <div class="row">
         <span class="row-label">Misc fees</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-misc" placeholder="1,000"></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-misc" placeholder="1,000" value="1,000"></div>
       </div>
       <div class="row">
         <div class="row-sublabel">Stamp duty, legal fees, B&amp;P inspection and LMI are calculated automatically using your Rates tab defaults.</div>
@@ -306,45 +306,45 @@
     <div class="group">
       <div class="row">
         <span class="row-label">Building insurance</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-bldg-ins" placeholder="1,000"><span>/yr</span></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-bldg-ins" placeholder="1,000" value="1,000"><span>/yr</span></div>
       </div>
       <div class="row">
         <span class="row-label">Landlord insurance</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-ll-ins" placeholder="350"><span>/yr</span></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-ll-ins" placeholder="350" value="350"><span>/yr</span></div>
       </div>
       <div class="row">
         <span class="row-label">Property management</span>
-        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-mgmt-pct" placeholder="6.6" style="text-align:right"><span>% of rent</span></div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-mgmt-pct" placeholder="6.6" style="text-align:right" value="6.6"><span>% of rent</span></div>
       </div>
       <div class="row">
         <span class="row-label">Leasing fee</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-leasing" placeholder="605"><span>/yr</span></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-leasing" placeholder="605" value="605"><span>/yr</span></div>
       </div>
       <div class="row">
         <div>
           <div class="row-label">Vacancy allowance</div>
           <div class="row-sublabel">Weeks of lost rent per year</div>
         </div>
-        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-vacancy" placeholder="1.5" style="text-align:right"><span>wks</span></div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-vacancy" placeholder="1.5" style="text-align:right" value="1.5"><span>wks</span></div>
       </div>
       <div class="row">
         <span class="row-label">Land tax</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-land-tax" placeholder="0"><span>/yr</span></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-land-tax" placeholder="0" value="0"><span>/yr</span></div>
       </div>
       <div class="row">
         <span class="row-label">Strata / levies</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-strata" placeholder="0"><span>/mo</span></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-strata" placeholder="0" value="0"><span>/mo</span></div>
       </div>
       <div class="row">
         <span class="row-label">Maintenance</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-maint" placeholder="150"><span>/mo</span></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-maint" placeholder="150" value="150"><span>/mo</span></div>
       </div>
       <div class="row">
         <div>
           <div class="row-label">Other expenses</div>
           <div class="row-sublabel">Termites, admin fee, pool etc.</div>
         </div>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-other-exp" placeholder="300"><span>/yr</span></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-other-exp" placeholder="300" value="300"><span>/yr</span></div>
       </div>
     </div>
 
@@ -352,11 +352,11 @@
     <div class="group">
       <div class="row">
         <span class="row-label">Lower rent estimate</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-rent-low" placeholder="500"><span>/wk</span></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-rent-low" placeholder="500" value="500"><span>/wk</span></div>
       </div>
       <div class="row">
         <span class="row-label">Higher rent estimate</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-rent-high" placeholder="550"><span>/wk</span></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-rent-high" placeholder="550" value="550"><span>/wk</span></div>
       </div>
     </div>
 
@@ -367,18 +367,18 @@
           <div class="row-label">Marginal tax rate</div>
           <div class="row-sublabel">Your effective personal rate</div>
         </div>
-        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-tax-rate" placeholder="32.5" style="text-align:right"><span>%</span></div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-tax-rate" placeholder="32.5" style="text-align:right" value="32.5"><span>%</span></div>
       </div>
       <div class="row">
         <span class="row-label">Depreciation</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-depreciation" placeholder="0"><span>/yr</span></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-depreciation" placeholder="0" value="0"><span>/yr</span></div>
       </div>
       <div class="row">
         <div>
           <div class="row-label">Growth rate</div>
           <div class="row-sublabel">Estimated CAGR</div>
         </div>
-        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-growth" placeholder="5" style="text-align:right"><span>% p.a.</span></div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-growth" placeholder="5" style="text-align:right" value="5"><span>% p.a.</span></div>
       </div>
     </div>
 

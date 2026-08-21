@@ -25,7 +25,15 @@
     input.addEventListener("focus", () => {
       const n = parseNum(input.value);
       input.value = n ? String(n) : "";
+      input.select(); // select-all on focus so typing replaces rather than appends
     });
+  }
+
+  // Same select-all-on-focus behaviour for decimal fields (rate, %, years),
+  // which don't get thousands formatting but have the same "prefilled value,
+  // tap and type" risk of appending instead of replacing.
+  function attachSelectOnFocus(input) {
+    input.addEventListener("focus", () => input.select());
   }
 
   // ---------------------------------------------------------------------
@@ -588,10 +596,16 @@
       const raw = localStorage.getItem("property-planner-state-v1");
       if (!raw) return;
       const s = JSON.parse(raw);
+      // Only overwrite a field's HTML-default value if we actually have a
+      // saved value for it — an empty saved string should never blank out
+      // the pre-filled defaults now baked into the page.
+      const setIfPresent = (id, val) => {
+        if (val) document.getElementById(id).value = val;
+      };
       if (s.af) {
-        document.getElementById("af-loan").value = s.af.loan || "";
-        document.getElementById("af-cash").value = s.af.cash || "";
-        document.getElementById("af-buffer").value = s.af.buffer || "";
+        setIfPresent("af-loan", s.af.loan);
+        setIfPresent("af-cash", s.af.cash);
+        setIfPresent("af-buffer", s.af.buffer);
         selectedState.af = s.af.state || "NSW";
         document.getElementById("af-state-value").innerHTML = `${selectedState.af} <span class="chevron">›</span>`;
         document.getElementById("af-fhb").checked = !!s.af.fhb;
@@ -599,18 +613,18 @@
         document.getElementById("af-lmi-waived-row").classList.toggle("hidden", !s.af.fhb);
       }
       if (s.mg) {
-        document.getElementById("mg-loan").value = s.mg.loan || "";
-        document.getElementById("mg-rate").value = s.mg.rate || "";
-        document.getElementById("mg-term").value = s.mg.term || "";
-        document.getElementById("mg-extra").value = s.mg.extra || "";
-        document.getElementById("mg-offset").value = s.mg.offset || "";
+        setIfPresent("mg-loan", s.mg.loan);
+        setIfPresent("mg-rate", s.mg.rate);
+        setIfPresent("mg-term", s.mg.term);
+        setIfPresent("mg-extra", s.mg.extra);
+        setIfPresent("mg-offset", s.mg.offset);
         setSeg("mg-type", s.mg.type);
         setSeg("mg-freq", s.mg.freq);
       }
       if (s.co) {
-        document.getElementById("co-price").value = s.co.price || "";
-        document.getElementById("co-loan").value = s.co.loan || "";
-        document.getElementById("co-cash").value = s.co.cash || "";
+        setIfPresent("co-price", s.co.price);
+        setIfPresent("co-loan", s.co.loan);
+        setIfPresent("co-cash", s.co.cash);
         selectedState.co = s.co.state || "NSW";
         document.getElementById("co-state-value").innerHTML = `${selectedState.co} <span class="chevron">›</span>`;
         document.getElementById("co-fhb").checked = !!s.co.fhb;
@@ -618,9 +632,7 @@
         document.getElementById("co-lmi-waived-row").classList.toggle("hidden", !s.co.fhb);
       }
       if (s.in) {
-        INVEST_FIELD_IDS.forEach((id) => {
-          if (s.in[id] !== undefined) document.getElementById(id).value = s.in[id];
-        });
+        INVEST_FIELD_IDS.forEach((id) => setIfPresent(id, s.in[id]));
         selectedState.in = s.in.state || "NSW";
         document.getElementById("in-state-value").innerHTML = `${selectedState.in} <span class="chevron">›</span>`;
       }
@@ -638,10 +650,20 @@
   });
   document.querySelectorAll('input[inputmode="decimal"]').forEach((inp) => {
     inp.addEventListener("blur", saveState);
+    attachSelectOnFocus(inp);
   });
   document.querySelectorAll('.switch input').forEach((inp) => inp.addEventListener("change", saveState));
 
   restoreState();
+
+  // Auto-run each calculator once on load so the pre-filled example is
+  // immediately useful — the person can see real numbers straight away and
+  // just override price/loan amount rather than needing to press Calculate
+  // before anything appears.
+  document.getElementById("af-calc").click();
+  document.getElementById("mg-calc").click();
+  document.getElementById("co-calc").click();
+  document.getElementById("in-calc").click();
 
   // ---------------------------------------------------------------------
   // Register service worker
