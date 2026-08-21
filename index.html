@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Property Planner — Australian Property Affordability</title>
+<meta name="description" content="Work out what you can actually afford to buy in Australia, after stamp duty, LMI and every hidden cost.">
+<meta name="theme-color" content="#EEF0EE" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14171B" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Property Planner">
+<script>
+  // Apply saved/system theme before first paint, to avoid a flash of the wrong theme.
+  (function () {
+    try {
+      var saved = localStorage.getItem("settle-theme");
+      var mode = saved || "system";
+      var isDark = mode === "dark" || (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      if (isDark) document.documentElement.setAttribute("data-theme", "dark");
+    } catch (e) {}
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== AFFORD TAB ===================== -->
+  <section id="screen-afford" class="screen active">
+    <div class="large-title">What can I afford?</div>
+    <p class="screen-subtitle">Enter your loan capacity and savings — we'll work backwards through stamp duty, LMI and fees to your real maximum purchase price.</p>
+
+    <div class="eyebrow">Your finances</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Maximum loan amount</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="af-loan" placeholder="600,000"></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Savings / deposit available</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="af-cash" placeholder="120,000"></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Keep a cash buffer</div>
+          <div class="row-sublabel">Leave some savings untouched</div>
+        </div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="af-buffer" placeholder="0"></div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Property &amp; buyer profile</div>
+    <div class="group">
+      <div class="row tappable" id="af-state-row">
+        <span class="row-label">State / territory</span>
+        <span class="row-value" id="af-state-value">NSW <span class="chevron">›</span></span>
+      </div>
+      <div class="row">
+        <span class="row-label">First home buyer</span>
+        <label class="switch"><input type="checkbox" id="af-fhb"><span class="switch-track"></span></label>
+      </div>
+      <div class="row hidden" id="af-lmi-waived-row">
+        <div>
+          <div class="row-label">No LMI (First Home Guarantee)</div>
+          <div class="row-sublabel">5% deposit scheme, subject to eligibility</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="af-lmi-waived"><span class="switch-track"></span></label>
+      </div>
+      <div class="row">
+        <span class="row-label">Use</span>
+        <div class="segmented" style="width:180px" id="af-use">
+          <button class="active" data-val="owner">Owner-occ.</button>
+          <button data-val="investor">Investor</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="af-calc">Calculate my maximum price</button>
+
+    <div id="af-results" class="hidden">
+      <div class="hero-result">
+        <div class="hero-label">Maximum realistic property price</div>
+        <div class="hero-number tabular" id="af-max-price">$0</div>
+        <div class="hero-caption" id="af-caption">after stamp duty, LMI and purchase costs</div>
+      </div>
+
+      <div class="ledger">
+        <div class="ledger-bar" id="af-ledger-bar"></div>
+        <div class="ledger-legend">
+          <div class="ledger-legend-item"><span class="ledger-dot" style="background:var(--loan-color)"></span>Loan</div>
+          <div class="ledger-legend-item"><span class="ledger-dot" style="background:var(--cash-color)"></span>Deposit / cash</div>
+          <div class="ledger-legend-item"><span class="ledger-dot" style="background:var(--cost-color)"></span>Costs bite</div>
+        </div>
+      </div>
+
+      <div class="breakdown" id="af-breakdown"></div>
+      <div class="status-banner" id="af-status"></div>
+    </div>
+  </section>
+
+  <!-- ===================== MORTGAGE TAB ===================== -->
+  <section id="screen-mortgage" class="screen">
+    <div class="large-title">Mortgage repayments</div>
+    <p class="screen-subtitle">See your actual repayment, total interest, and payoff date — with extra repayments and offset.</p>
+
+    <div class="eyebrow">Loan details</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Loan amount</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="mg-loan" placeholder="600,000"></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Interest rate</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="mg-rate" placeholder="6.00" style="text-align:right"><span>% p.a.</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Loan term</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="mg-term" placeholder="30" style="text-align:right"><span>years</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Repayment type</span>
+        <div class="segmented" style="width:160px" id="mg-type">
+          <button class="active" data-val="PI">P&amp;I</button>
+          <button data-val="IO">Interest only</button>
+        </div>
+      </div>
+      <div class="row">
+        <span class="row-label">Frequency</span>
+        <div class="segmented" style="width:210px" id="mg-freq">
+          <button data-val="weekly">Weekly</button>
+          <button data-val="fortnightly">Fortnightly</button>
+          <button class="active" data-val="monthly">Monthly</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Optional extras</div>
+    <div class="group">
+      <div class="row">
+        <div>
+          <div class="row-label">Extra repayment</div>
+          <div class="row-sublabel">Per period, on top of minimum</div>
+        </div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="mg-extra" placeholder="0"></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Offset account balance</div>
+          <div class="row-sublabel">Reduces interest-charged balance</div>
+        </div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="mg-offset" placeholder="0"></div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="mg-calc">Calculate repayments</button>
+
+    <div id="mg-results" class="hidden">
+      <div class="hero-result">
+        <div class="hero-label" id="mg-hero-label">Monthly repayment</div>
+        <div class="hero-number tabular" id="mg-repayment">$0</div>
+        <div class="hero-caption" id="mg-caption"></div>
+      </div>
+      <div class="breakdown" id="mg-breakdown"></div>
+    </div>
+  </section>
+
+  <!-- ===================== COSTS TAB ===================== -->
+  <section id="screen-costs" class="screen">
+    <div class="large-title">What will it cost me?</div>
+    <p class="screen-subtitle">Enter a property price to see every upfront cost, and check whether you can actually afford it.</p>
+
+    <div class="eyebrow">Property</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Property price</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-price" placeholder="750,000"></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Loan amount</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-loan" placeholder="600,000"></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Your available cash</div>
+          <div class="row-sublabel">Optional — checks if you can afford it</div>
+        </div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-cash" placeholder="150,000"></div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Buyer profile</div>
+    <div class="group">
+      <div class="row tappable" id="co-state-row">
+        <span class="row-label">State / territory</span>
+        <span class="row-value" id="co-state-value">NSW <span class="chevron">›</span></span>
+      </div>
+      <div class="row">
+        <span class="row-label">First home buyer</span>
+        <label class="switch"><input type="checkbox" id="co-fhb"><span class="switch-track"></span></label>
+      </div>
+      <div class="row hidden" id="co-lmi-waived-row">
+        <div>
+          <div class="row-label">No LMI (First Home Guarantee)</div>
+          <div class="row-sublabel">5% deposit scheme, subject to eligibility</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="co-lmi-waived"><span class="switch-track"></span></label>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="co-calc">Calculate total cost</button>
+
+    <div id="co-results" class="hidden">
+      <div class="hero-result">
+        <div class="hero-label">Total cash required to buy</div>
+        <div class="hero-number tabular" id="co-total">$0</div>
+        <div class="hero-caption">on top of your loan</div>
+      </div>
+      <div id="co-status-wrap"><div class="status-banner" id="co-status"></div></div>
+      <div class="breakdown" id="co-breakdown"></div>
+
+      <div class="eyebrow">Estimated ongoing costs</div>
+      <div class="group" id="co-ongoing-inputs">
+        <div class="row">
+          <span class="row-label">Council rates</span>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-council" placeholder="175"><span>/mo</span></div>
+        </div>
+        <div class="row">
+          <span class="row-label">Water rates</span>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-water" placeholder="80"><span>/mo</span></div>
+        </div>
+        <div class="row">
+          <span class="row-label">Home insurance</span>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-insurance" placeholder="120"><span>/mo</span></div>
+        </div>
+        <div class="row">
+          <span class="row-label">Strata / body corp</span>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-strata" placeholder="0"><span>/mo</span></div>
+        </div>
+        <div class="row">
+          <span class="row-label">Maintenance</span>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-ong-maint" placeholder="150"><span>/mo</span></div>
+        </div>
+      </div>
+      <button class="btn-secondary" id="co-ongoing-calc">Add mortgage repayment for real monthly cost</button>
+      <div class="breakdown hidden" id="co-ongoing-breakdown"></div>
+    </div>
+  </section>
+
+  <!-- ===================== RATES / SETTINGS TAB ===================== -->
+  <section id="screen-rates" class="screen">
+    <div class="large-title">Rates &amp; assumptions</div>
+    <p class="screen-subtitle">Every figure this app uses, in one place. Adjust the defaults if your quotes differ.</p>
+
+    <div class="eyebrow">Appearance</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Theme</span>
+        <div class="segmented" style="width:210px" id="theme-picker">
+          <button data-val="light">Light</button>
+          <button data-val="dark">Dark</button>
+          <button class="active" data-val="system">System</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Default upfront costs</div>
+    <div class="group" id="rates-upfront"></div>
+
+    <div class="eyebrow">First-home-buyer stamp duty relief</div>
+    <div class="group" id="rates-fhb"></div>
+
+    <div class="info-note">
+      <span class="dot"></span>
+      <span>Stamp duty brackets, first-home-buyer thresholds and LMI premiums are set by state governments and lenders, and change often — sometimes every financial year. Figures here are indicative and <strong>last verified <span id="rates-verified-date"></span></strong>. Always confirm exact numbers with your state revenue office, lender, or conveyancer before relying on them.</span>
+    </div>
+
+    <div class="rates-footer">Property Planner · a property affordability calculator for Australia<br>Built for personal planning, not financial advice.</div>
+  </section>
+
+  <!-- ===================== TAB BAR ===================== -->
+  <nav class="tab-bar">
+    <button class="tab-btn active" data-tab="afford">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/></svg>
+      Afford
+    </button>
+    <button class="tab-btn" data-tab="mortgage">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 15V9l6 6V9"/></svg>
+      Mortgage
+    </button>
+    <button class="tab-btn" data-tab="costs">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+      Costs
+    </button>
+    <button class="tab-btn" data-tab="rates">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+      Rates
+    </button>
+  </nav>
+
+  <!-- ===================== STATE PICKER SHEET ===================== -->
+  <div class="sheet-backdrop" id="sheet-backdrop"></div>
+  <div class="sheet" id="state-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Choose state or territory</div>
+    <div class="sheet-list" id="state-sheet-list"></div>
+  </div>
+
+</div>
+
+<script src="js/rates.js"></script>
+<script src="js/calc.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
