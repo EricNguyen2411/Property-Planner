@@ -1,5 +1,5 @@
 // Bump this on every deployed change so the browser detects an update.
-const CACHE_VERSION = "property-planner-v1";
+const CACHE_VERSION = "property-planner-v2";
 
 const ASSETS = [
   "./",
@@ -11,6 +11,8 @@ const ASSETS = [
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
+  "./icons/icon-192-maskable.png",
+  "./icons/icon-512-maskable.png",
 ];
 
 self.addEventListener("install", (event) => {
