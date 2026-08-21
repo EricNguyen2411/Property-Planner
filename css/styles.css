@@ -460,6 +460,44 @@ body {
 .status-banner.positive { background: var(--positive-tint); color: #2A5943; }
 .status-banner.negative { background: var(--negative-tint); color: #8A2C2C; }
 .status-banner.neutral { background: var(--gold-tint); color: #8A6414; }
+html[data-theme="dark"] .status-banner.positive { color: #A9D9C1; }
+html[data-theme="dark"] .status-banner.negative { color: #E8B0B0; }
+html[data-theme="dark"] .status-banner.neutral { color: #E8CB8C; }
+
+/* Rent scenario comparison cards (Invest tab) */
+.scenario-toggle {
+  display: flex;
+  background: var(--paper);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  gap: 2px;
+  margin-top: 14px;
+}
+.scenario-toggle button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 9px 6px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  border-radius: 9px;
+  cursor: pointer;
+}
+.scenario-toggle button.active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(20,23,31,0.15);
+  font-weight: 600;
+}
+.scenario-toggle button .yield-tag {
+  display: block;
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-weight: 400;
+  margin-top: 1px;
+}
 
 /* ==========================================================================
    Nav bar + tab bar

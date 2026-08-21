@@ -29,7 +29,7 @@ function repaymentIO(loanAmount, annualRatePct, frequency) {
 }
 
 // Full repayment summary, including totals and payoff timing, optionally
-// with extra repayments per period (P&I only â€” extra repayments don't apply
+// with extra repayments per period (P&I only  -  extra repayments don't apply
 // to interest-only loans in this model).
 function mortgageSummary({
   loanAmount,
@@ -73,14 +73,14 @@ function mortgageSummary({
     balance -= principalPaid;
     periods++;
     if (principalPaid <= 0) {
-      // Repayment doesn't even cover interest â€” loan never pays off.
+      // Repayment doesn't even cover interest  -  loan never pays off.
       return {
         repaymentPerPeriod: baseRepayment,
         totalInterest: null,
         totalPaid: null,
         payoffPeriods: null,
         payoffYears: null,
-        note: "This repayment amount doesn't cover the interest charged â€” the loan would never be paid off. Increase the repayment or check the rate.",
+        note: "This repayment amount doesn't cover the interest charged  -  the loan would never be paid off. Increase the repayment or check the rate.",
       };
     }
   }
@@ -226,11 +226,134 @@ function canAfford({
   };
 }
 
+// Interest paid in the first 12 months of a P&I loan (accounting for offset),
+// used to separate the tax-deductible interest portion of a repayment from
+// the non-deductible principal portion for investment cashflow-after-tax.
+function firstYearInterest({ loanAmount, annualRatePct, termYears, offsetBalance = 0 }) {
+  const n = 12; // monthly
+  const periodRate = annualRatePct / 100 / n;
+  const repayment = repaymentPI(loanAmount, annualRatePct, termYears, "monthly");
+  let balance = loanAmount;
+  let interestSum = 0;
+  for (let i = 0; i < 12; i++) {
+    const interestBearingBalance = Math.max(balance - offsetBalance, 0);
+    const interest = interestBearingBalance * periodRate;
+    interestSum += interest;
+    const principalPaid = repayment - interest;
+    balance = Math.max(balance - principalPaid, 0);
+  }
+  return interestSum;
+}
+
+// ---------------------------------------------------------------------------
+// Investment property analysis
+//
+// Mirrors the structure of a typical buyers-agency cashflow worksheet:
+// capital required -> ongoing expenses -> rental income comparables -> yield
+// -> cashflow before tax -> cashflow after tax.
+//
+// Tax treatment: only the INTEREST portion of a P&I repayment is deductible
+// (not principal), and vacancy is treated as lost income rather than a
+// deductible expense. Cashflow before tax still subtracts the full P&I
+// repayment (it's a real cash cost), matching how these worksheets present
+// what actually leaves your bank account each year.
+// ---------------------------------------------------------------------------
+
+function investmentAnalysis({
+  price,
+  depositPct,
+  state,
+  annualRatePct,
+  loanTermYears,
+  offsetBalance = 0,
+  renovationCost = 0,
+  miscFees = 0,
+  otherUpfrontOverrides = {},
+  buildingInsuranceAnnual,
+  landlordInsuranceAnnual,
+  propertyMgmtPct,
+  leasingFeeAnnual,
+  vacancyWeeks,
+  landTaxAnnual,
+  stratLeviesMonthly,
+  maintenanceMonthly,
+  otherExpensesAnnual,
+  lowerRentWeekly,
+  higherRentWeekly,
+  taxRatePct,
+  depreciationAnnual,
+  growthCagrPct,
+}) {
+  const deposit = price * (depositPct / 100);
+  const loanAmount = price - deposit;
+  const duty = RatesModule.stampDuty(state, price, false); // investment: no FHB concession
+  const lmi = RatesModule.estimateLMI(loanAmount, price, false);
+  const otherUpfront = { ...RatesModule.DEFAULT_UPFRONT_COSTS, ...otherUpfrontOverrides };
+  const otherUpfrontTotal = Object.values(otherUpfront).reduce((a, b) => a + Number(b || 0), 0);
+  const totalCapitalRequired = deposit + duty + lmi + otherUpfrontTotal + renovationCost + miscFees;
+
+  const mortgage = mortgageSummary({
+    loanAmount, annualRatePct, termYears: loanTermYears, frequency: "monthly", repaymentType: "PI", offsetBalance,
+  });
+  const repaymentAnnual = mortgage.repaymentPerPeriod * 12;
+  const yr1Interest = firstYearInterest({ loanAmount, annualRatePct, termYears: loanTermYears, offsetBalance });
+
+  const fixedAnnualExpenses =
+    buildingInsuranceAnnual + landlordInsuranceAnnual + leasingFeeAnnual + landTaxAnnual +
+    stratLeviesMonthly * 12 + maintenanceMonthly * 12 + otherExpensesAnnual;
+
+  function scenario(rentWeekly) {
+    const grossRentAnnual = rentWeekly * 52;
+    const propertyMgmtAnnual = grossRentAnnual * (propertyMgmtPct / 100);
+    const vacancyCost = vacancyWeeks * rentWeekly;
+    const totalCashExpensesAnnual = fixedAnnualExpenses + propertyMgmtAnnual + vacancyCost + repaymentAnnual;
+    const cashflowBeforeTaxAnnual = grossRentAnnual - totalCashExpensesAnnual;
+    const yieldPct = (grossRentAnnual / price) * 100;
+
+    const deductibleExpenses = fixedAnnualExpenses + propertyMgmtAnnual + yr1Interest + depreciationAnnual;
+    const taxableIncome = grossRentAnnual - vacancyCost - deductibleExpenses;
+    const taxEffectAnnual = -taxableIncome * (taxRatePct / 100); // positive = refund, negative = extra tax
+    const cashflowAfterTaxAnnual = cashflowBeforeTaxAnnual + taxEffectAnnual;
+
+    return {
+      rentWeekly,
+      grossRentAnnual,
+      propertyMgmtAnnual,
+      vacancyCost,
+      totalCashExpensesAnnual,
+      cashflowBeforeTaxAnnual,
+      cashflowBeforeTaxWeekly: cashflowBeforeTaxAnnual / 52,
+      cashflowBeforeTaxMonthly: cashflowBeforeTaxAnnual / 12,
+      yieldPct,
+      taxableIncome,
+      taxEffectAnnual,
+      cashflowAfterTaxAnnual,
+      cashflowAfterTaxWeekly: cashflowAfterTaxAnnual / 52,
+      cashflowAfterTaxMonthly: cashflowAfterTaxAnnual / 12,
+    };
+  }
+
+  const value5yr = price * Math.pow(1 + growthCagrPct / 100, 5);
+  const value10yr = price * Math.pow(1 + growthCagrPct / 100, 10);
+
+  return {
+    price, deposit, loanAmount, stampDuty: duty, lmi, otherUpfront, otherUpfrontTotal,
+    renovationCost, miscFees, totalCapitalRequired,
+    repaymentAnnual, repaymentMonthly: mortgage.repaymentPerPeriod, yr1Interest,
+    fixedAnnualExpenses,
+    lower: scenario(lowerRentWeekly),
+    higher: scenario(higherRentWeekly),
+    growth: { cagr: growthCagrPct, value5yr, value10yr },
+  };
+}
+
 const PropCalcExports = {
   mortgageSummary,
   upfrontCosts,
   solveMaxPropertyPrice,
   canAfford,
+  firstYearInterest,
+  investmentAnalysis,
   FREQUENCIES,
 };
 

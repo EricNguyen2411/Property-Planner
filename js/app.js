@@ -104,8 +104,8 @@
   const sheetBackdrop = document.getElementById("sheet-backdrop");
   const stateSheet = document.getElementById("state-sheet");
   const stateSheetList = document.getElementById("state-sheet-list");
-  let activeStateTarget = null; // 'af' or 'co'
-  let selectedState = { af: "NSW", co: "NSW" };
+  let activeStateTarget = null; // 'af', 'co' or 'in'
+  let selectedState = { af: "NSW", co: "NSW", in: "NSW" };
 
   function renderStateSheetList() {
     stateSheetList.innerHTML = "";
@@ -136,6 +136,7 @@
   sheetBackdrop.addEventListener("click", closeSheet);
   document.getElementById("af-state-row").addEventListener("click", () => openSheet("af"));
   document.getElementById("co-state-row").addEventListener("click", () => openSheet("co"));
+  document.getElementById("in-state-row").addEventListener("click", () => openSheet("in"));
 
   // FHB toggle shows/hides "no LMI" row
   document.getElementById("af-fhb").addEventListener("change", (e) => {
@@ -374,6 +375,109 @@
   });
 
   // ---------------------------------------------------------------------
+  // INVEST tab
+  // ---------------------------------------------------------------------
+  let lastInvestResult = null;
+  let activeScenario = "lower";
+
+  document.getElementById("in-scenario-toggle").addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    document.querySelectorAll("#in-scenario-toggle button").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeScenario = btn.dataset.val;
+    if (lastInvestResult) renderInvestScenario();
+  });
+
+  document.getElementById("in-calc").addEventListener("click", () => {
+    const price = parseNum(document.getElementById("in-price").value);
+    if (price <= 0) {
+      alert("Enter a purchase price first.");
+      return;
+    }
+    const D = R.DEFAULT_INVESTMENT;
+    const result = C.investmentAnalysis({
+      price,
+      depositPct: parseNum(document.getElementById("in-deposit-pct").value) || 20,
+      state: selectedState.in,
+      annualRatePct: parseNum(document.getElementById("in-rate").value) || 6.5,
+      loanTermYears: parseNum(document.getElementById("in-term").value) || 30,
+      offsetBalance: parseNum(document.getElementById("in-offset").value),
+      renovationCost: parseNum(document.getElementById("in-reno").value),
+      miscFees: parseNum(document.getElementById("in-misc").value) || D.miscFees,
+      buildingInsuranceAnnual: parseNum(document.getElementById("in-bldg-ins").value) || D.buildingInsuranceAnnual,
+      landlordInsuranceAnnual: parseNum(document.getElementById("in-ll-ins").value) || D.landlordInsuranceAnnual,
+      propertyMgmtPct: document.getElementById("in-mgmt-pct").value !== "" ? parseNum(document.getElementById("in-mgmt-pct").value) : D.propertyMgmtPct,
+      leasingFeeAnnual: parseNum(document.getElementById("in-leasing").value) || D.leasingFeeAnnual,
+      vacancyWeeks: document.getElementById("in-vacancy").value !== "" ? parseNum(document.getElementById("in-vacancy").value) : D.vacancyWeeks,
+      landTaxAnnual: parseNum(document.getElementById("in-land-tax").value),
+      stratLeviesMonthly: parseNum(document.getElementById("in-strata").value),
+      maintenanceMonthly: document.getElementById("in-maint").value !== "" ? parseNum(document.getElementById("in-maint").value) : D.maintenanceMonthly,
+      otherExpensesAnnual: document.getElementById("in-other-exp").value !== "" ? parseNum(document.getElementById("in-other-exp").value) : D.otherExpensesAnnual,
+      lowerRentWeekly: parseNum(document.getElementById("in-rent-low").value) || 500,
+      higherRentWeekly: parseNum(document.getElementById("in-rent-high").value) || 550,
+      taxRatePct: document.getElementById("in-tax-rate").value !== "" ? parseNum(document.getElementById("in-tax-rate").value) : D.taxRatePct,
+      depreciationAnnual: parseNum(document.getElementById("in-depreciation").value),
+      growthCagrPct: parseNum(document.getElementById("in-growth").value) || D.growthCagrPct,
+    });
+
+    lastInvestResult = result;
+    document.getElementById("in-capital").textContent = fmt$(result.totalCapitalRequired);
+    document.getElementById("in-tag-lower").textContent = `${fmt$(result.lower.rentWeekly)}/wk`;
+    document.getElementById("in-tag-higher").textContent = `${fmt$(result.higher.rentWeekly)}/wk`;
+
+    document.getElementById("in-growth-breakdown").innerHTML = breakdownRows([
+      ["Purchase price today", result.price, false],
+      [`5-year estimate (${result.growth.cagr}% p.a.)`, result.growth.value5yr, false],
+      [`10-year estimate (${result.growth.cagr}% p.a.)`, result.growth.value10yr, false, true],
+    ]);
+
+    renderInvestScenario();
+    document.getElementById("in-results").classList.remove("hidden");
+    saveState();
+  });
+
+  function renderInvestScenario() {
+    const s = lastInvestResult[activeScenario];
+    const r = lastInvestResult;
+
+    document.getElementById("in-yield-breakdown").innerHTML =
+      breakdownRows([["Gross rent (annual)", s.grossRentAnnual, false]]) +
+      `<div class="breakdown-row total"><span>Yield on purchase</span><span class="amount tabular">${s.yieldPct.toFixed(2)}%</span></div>`;
+
+    document.getElementById("in-before-tax-breakdown").innerHTML = breakdownRows([
+      ["Gross rent", s.grossRentAnnual, false],
+      ["Property management", -s.propertyMgmtAnnual, true],
+      ["Vacancy allowance", -s.vacancyCost, true],
+      ["Other ongoing expenses", -r.fixedAnnualExpenses, true],
+      ["Loan repayments (P&I)", -r.repaymentAnnual, true],
+      ["Cashflow before tax (annual)", s.cashflowBeforeTaxAnnual, false, true],
+    ]);
+    const btStatus = document.getElementById("in-before-tax-status");
+    if (s.cashflowBeforeTaxAnnual >= 0) {
+      btStatus.className = "status-banner positive";
+      btStatus.textContent = `+${fmt$(s.cashflowBeforeTaxAnnual / 52)}/wk · +${fmt$(s.cashflowBeforeTaxAnnual / 12)}/mo positively geared`;
+    } else {
+      btStatus.className = "status-banner negative";
+      btStatus.textContent = `${fmt$signed(s.cashflowBeforeTaxAnnual / 52)}/wk · ${fmt$signed(s.cashflowBeforeTaxAnnual / 12)}/mo out of pocket`;
+    }
+
+    document.getElementById("in-after-tax-breakdown").innerHTML = breakdownRows([
+      ["Cashflow before tax", s.cashflowBeforeTaxAnnual, false],
+      [s.taxableIncome < 0 ? "Tax refund (negative gearing)" : "Extra tax payable", s.taxEffectAnnual, s.taxEffectAnnual < 0],
+      ["Cashflow after tax (annual)", s.cashflowAfterTaxAnnual, false, true],
+    ]);
+    const atStatus = document.getElementById("in-after-tax-status");
+    if (s.cashflowAfterTaxAnnual >= 0) {
+      atStatus.className = "status-banner positive";
+      atStatus.textContent = `+${fmt$(s.cashflowAfterTaxAnnual / 52)}/wk · +${fmt$(s.cashflowAfterTaxAnnual / 12)}/mo after tax`;
+    } else {
+      atStatus.className = "status-banner negative";
+      atStatus.textContent = `${fmt$signed(s.cashflowAfterTaxAnnual / 52)}/wk · ${fmt$signed(s.cashflowAfterTaxAnnual / 12)}/mo after tax`;
+    }
+  }
+
+  // ---------------------------------------------------------------------
   // RATES tab
   // ---------------------------------------------------------------------
   function renderRatesTab() {
@@ -404,6 +508,27 @@
       </div>`;
     }).join("");
 
+    const investLabels = {
+      buildingInsuranceAnnual: ["Building insurance", "/yr"],
+      landlordInsuranceAnnual: ["Landlord insurance", "/yr"],
+      propertyMgmtPct: ["Property management", "%"],
+      leasingFeeAnnual: ["Leasing fee", "/yr"],
+      vacancyWeeks: ["Vacancy allowance", "wks"],
+      maintenanceMonthly: ["Maintenance", "/mo"],
+      otherExpensesAnnual: ["Other expenses", "/yr"],
+      miscFees: ["Misc fees (upfront)", ""],
+      taxRatePct: ["Marginal tax rate", "%"],
+      growthCagrPct: ["Growth rate (CAGR)", "%"],
+    };
+    const investEl = document.getElementById("rates-invest");
+    investEl.innerHTML = Object.entries(investLabels)
+      .map(([key, [label, suffix]]) => {
+        const val = R.DEFAULT_INVESTMENT[key];
+        const display = suffix === "%" || suffix === "wks" ? val : val.toLocaleString("en-AU");
+        return `<div class="row"><span class="row-label">${label}</span><span class="row-value">${suffix === "" ? "$" + display : display + (suffix ? " " + suffix : "")}</span></div>`;
+      })
+      .join("");
+
     document.getElementById("rates-verified-date").textContent = R.RATES_LAST_VERIFIED;
   }
   renderRatesTab();
@@ -411,6 +536,14 @@
   // ---------------------------------------------------------------------
   // Persistence (local only — this is a personal calculator, no sync)
   // ---------------------------------------------------------------------
+  const INVEST_FIELD_IDS = [
+    "in-price", "in-deposit-pct", "in-rate", "in-term", "in-offset",
+    "in-reno", "in-misc", "in-bldg-ins", "in-ll-ins", "in-mgmt-pct",
+    "in-leasing", "in-vacancy", "in-land-tax", "in-strata", "in-maint",
+    "in-other-exp", "in-rent-low", "in-rent-high", "in-tax-rate",
+    "in-depreciation", "in-growth",
+  ];
+
   function saveState() {
     try {
       const state = {
@@ -439,6 +572,12 @@
           fhb: document.getElementById("co-fhb").checked,
           lmiWaived: document.getElementById("co-lmi-waived").checked,
         },
+        in: (() => {
+          const vals = {};
+          INVEST_FIELD_IDS.forEach((id) => { vals[id] = document.getElementById(id).value; });
+          vals.state = selectedState.in;
+          return vals;
+        })(),
       };
       localStorage.setItem("property-planner-state-v1", JSON.stringify(state));
     } catch (e) { /* storage unavailable - ignore */ }
@@ -477,6 +616,13 @@
         document.getElementById("co-fhb").checked = !!s.co.fhb;
         document.getElementById("co-lmi-waived").checked = !!s.co.lmiWaived;
         document.getElementById("co-lmi-waived-row").classList.toggle("hidden", !s.co.fhb);
+      }
+      if (s.in) {
+        INVEST_FIELD_IDS.forEach((id) => {
+          if (s.in[id] !== undefined) document.getElementById(id).value = s.in[id];
+        });
+        selectedState.in = s.in.state || "NSW";
+        document.getElementById("in-state-value").innerHTML = `${selectedState.in} <span class="chevron">›</span>`;
       }
     } catch (e) { /* ignore malformed state */ }
   }

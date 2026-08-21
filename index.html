@@ -252,6 +252,170 @@
     </div>
   </section>
 
+  <!-- ===================== INVEST TAB ===================== -->
+  <section id="screen-invest" class="screen">
+    <div class="large-title">Investment cashflow</div>
+    <p class="screen-subtitle">Yield, and cashflow before and after tax, for an investment property across two rent scenarios.</p>
+
+    <div class="eyebrow">Purchase &amp; loan</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Purchase price</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-price" placeholder="680,000"></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Deposit</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-deposit-pct" placeholder="12" style="text-align:right"><span>%</span></div>
+      </div>
+      <div class="row tappable" id="in-state-row">
+        <span class="row-label">State / territory</span>
+        <span class="row-value" id="in-state-value">NSW <span class="chevron">›</span></span>
+      </div>
+      <div class="row">
+        <span class="row-label">Interest rate</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-rate" placeholder="6.66" style="text-align:right"><span>% p.a.</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Loan term</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="in-term" placeholder="30" style="text-align:right"><span>years</span></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Offset balance</div>
+        </div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-offset" placeholder="0"></div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Renovation &amp; other upfront costs</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Renovation cost</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-reno" placeholder="0"></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Misc fees</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-misc" placeholder="1,000"></div>
+      </div>
+      <div class="row">
+        <div class="row-sublabel">Stamp duty, legal fees, B&amp;P inspection and LMI are calculated automatically using your Rates tab defaults.</div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Ongoing expenses</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Building insurance</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-bldg-ins" placeholder="1,000"><span>/yr</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Landlord insurance</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-ll-ins" placeholder="350"><span>/yr</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Property management</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-mgmt-pct" placeholder="6.6" style="text-align:right"><span>% of rent</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Leasing fee</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-leasing" placeholder="605"><span>/yr</span></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Vacancy allowance</div>
+          <div class="row-sublabel">Weeks of lost rent per year</div>
+        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-vacancy" placeholder="1.5" style="text-align:right"><span>wks</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Land tax</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-land-tax" placeholder="0"><span>/yr</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Strata / levies</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-strata" placeholder="0"><span>/mo</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Maintenance</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-maint" placeholder="150"><span>/mo</span></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Other expenses</div>
+          <div class="row-sublabel">Termites, admin fee, pool etc.</div>
+        </div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-other-exp" placeholder="300"><span>/yr</span></div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Rental income comparables</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Lower rent estimate</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-rent-low" placeholder="500"><span>/wk</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Higher rent estimate</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-rent-high" placeholder="550"><span>/wk</span></div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Tax &amp; growth</div>
+    <div class="group">
+      <div class="row">
+        <div>
+          <div class="row-label">Marginal tax rate</div>
+          <div class="row-sublabel">Your effective personal rate</div>
+        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-tax-rate" placeholder="32.5" style="text-align:right"><span>%</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Depreciation</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-depreciation" placeholder="0"><span>/yr</span></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Growth rate</div>
+          <div class="row-sublabel">Estimated CAGR</div>
+        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-growth" placeholder="5" style="text-align:right"><span>% p.a.</span></div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="in-calc">Calculate cashflow</button>
+
+    <div id="in-results" class="hidden">
+      <div class="hero-result">
+        <div class="hero-label">Total capital required</div>
+        <div class="hero-number tabular" id="in-capital">$0</div>
+        <div class="hero-caption">deposit, stamp duty, LMI, fees &amp; renovation</div>
+      </div>
+
+      <div class="scenario-toggle" id="in-scenario-toggle">
+        <button class="active" data-val="lower">Lower rent<span class="yield-tag" id="in-tag-lower">$0/wk</span></button>
+        <button data-val="higher">Higher rent<span class="yield-tag" id="in-tag-higher">$0/wk</span></button>
+      </div>
+
+      <div class="breakdown" id="in-yield-breakdown"></div>
+
+      <div class="eyebrow">Cashflow before tax</div>
+      <div class="breakdown" id="in-before-tax-breakdown"></div>
+      <div class="status-banner" id="in-before-tax-status"></div>
+
+      <div class="eyebrow">Cashflow after tax</div>
+      <div class="breakdown" id="in-after-tax-breakdown"></div>
+      <div class="status-banner" id="in-after-tax-status"></div>
+
+      <div class="eyebrow">Growth projection</div>
+      <div class="breakdown" id="in-growth-breakdown"></div>
+
+      <div class="info-note">
+        <span class="dot"></span>
+        <span>Cashflow before tax subtracts your full loan repayment (principal + interest) — what actually leaves your account. Cashflow after tax then adds back any tax refund from negative gearing, based on the interest-only portion of your repayment plus depreciation and other deductible costs. This isn't tax advice — check your figures with an accountant.</span>
+      </div>
+    </div>
+  </section>
+
   <!-- ===================== RATES / SETTINGS TAB ===================== -->
   <section id="screen-rates" class="screen">
     <div class="large-title">Rates &amp; assumptions</div>
@@ -275,6 +439,10 @@
     <div class="eyebrow">First-home-buyer stamp duty relief</div>
     <div class="group" id="rates-fhb"></div>
 
+    <div class="eyebrow">Investment property defaults</div>
+    <div class="group" id="rates-invest"></div>
+    <p class="screen-subtitle" style="margin-top:8px;">These are starting points used on the Invest tab when a field is left blank — edit them directly there for your specific property.</p>
+
     <div class="info-note">
       <span class="dot"></span>
       <span>Stamp duty brackets, first-home-buyer thresholds and LMI premiums are set by state governments and lenders, and change often — sometimes every financial year. Figures here are indicative and <strong>last verified <span id="rates-verified-date"></span></strong>. Always confirm exact numbers with your state revenue office, lender, or conveyancer before relying on them.</span>
@@ -296,6 +464,10 @@
     <button class="tab-btn" data-tab="costs">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
       Costs
+    </button>
+    <button class="tab-btn" data-tab="invest">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/></svg>
+      Invest
     </button>
     <button class="tab-btn" data-tab="rates">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>

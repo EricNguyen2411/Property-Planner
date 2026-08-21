@@ -136,15 +136,15 @@ function standardStampDuty(state, price) {
 // ---------------------------------------------------------------------------
 // Each state: { exemptUpTo, fullDutyAt, note }. Duty is $0 up to exemptUpTo,
 // then tapers linearly to full standard duty at fullDutyAt (established homes).
-// Some states differentiate new vs established homes / vacant land â€” see notes.
+// Some states differentiate new vs established homes / vacant land  -  see notes.
 
 const FHB_CONCESSIONS = {
   NSW: { exemptUpTo: 800000, fullDutyAt: 1000000, note: "Full exemption to $800,000, sliding concession to $1,000,000 (existing homes). Vacant land: exempt to $350,000, concession to $450,000." },
   VIC: { exemptUpTo: 600000, fullDutyAt: 750000, note: "Full exemption to $600,000, sliding concession to $750,000." },
   QLD: { exemptUpTo: 700000, fullDutyAt: 800000, note: "Full exemption to $700,000, sliding concession to $800,000." },
   WA: { exemptUpTo: 500000, fullDutyAt: 700000, note: "Full exemption to $500,000, sliding concession to $700,000 (metro)." },
-  SA: { exemptUpTo: 0, fullDutyAt: 0, note: "No general FHB stamp duty concession on established homes. Relief available for new builds / off-the-plan only â€” not modelled here." },
-  TAS: { exemptUpTo: 0, fullDutyAt: 0, note: "Temporary FHB duty exemption lapsed 30 June 2026. Standard duty now applies â€” check for a successor scheme." },
+  SA: { exemptUpTo: 0, fullDutyAt: 0, note: "No general FHB stamp duty concession on established homes. Relief available for new builds / off-the-plan only  -  not modelled here." },
+  TAS: { exemptUpTo: 0, fullDutyAt: 0, note: "Temporary FHB duty exemption lapsed 30 June 2026. Standard duty now applies  -  check for a successor scheme." },
   ACT: { exemptUpTo: 1020000, fullDutyAt: 1020000, note: "Home Buyer Concession Scheme: full exemption up to $1,020,000, subject to an income test and other eligibility criteria." },
   NT: { exemptUpTo: 0, fullDutyAt: 0, note: "No general FHB stamp duty concession. A $50,000 HomeGrown Territory grant is available for new homes (not modelled as duty relief)." },
 };
@@ -162,7 +162,7 @@ function stampDuty(state, price, isFirstHomeBuyer) {
 }
 
 // ---------------------------------------------------------------------------
-// Lenders Mortgage Insurance (LMI) â€” indicative premium as % of loan amount,
+// Lenders Mortgage Insurance (LMI)  -  indicative premium as % of loan amount,
 // banded by Loan-to-Value Ratio (LVR). Actual premiums vary significantly by
 // lender, insurer, loan size and state; treat as a rough estimate only.
 // ---------------------------------------------------------------------------
@@ -204,7 +204,7 @@ function defaultUpfrontCostsTotal() {
 
 // ---------------------------------------------------------------------------
 // Default ongoing ownership cost assumptions (monthly), purely as starting
-// points the user overrides â€” these vary enormously by property.
+// points the user overrides  -  these vary enormously by property.
 // ---------------------------------------------------------------------------
 
 const DEFAULT_ONGOING_MONTHLY = {
@@ -213,6 +213,30 @@ const DEFAULT_ONGOING_MONTHLY = {
   homeInsurance: 120,
   strata: 0, // 0 default; user sets for units/townhouses
   maintenance: 150,
+};
+
+// ---------------------------------------------------------------------------
+// Investment property defaults — landlord-specific expenses, indicative
+// starting points only (a buyers agency worksheet was used as the reference
+// line items). Vacancy is modelled as weeks/year of lost rent rather than a
+// fixed dollar figure so it scales with whichever rent scenario it's applied to.
+// ---------------------------------------------------------------------------
+
+const DEFAULT_INVESTMENT = {
+  buildingInsuranceAnnual: 1000,
+  landlordInsuranceAnnual: 350,
+  propertyMgmtPct: 6.6, // typical inc. GST
+  leasingFeeAnnual: 605, // annualised re-letting/leasing fee equivalent
+  vacancyWeeks: 1.5,
+  landTaxAnnual: 0, // varies hugely by state and land value — no safe default
+  stratLeviesMonthly: 0,
+  maintenanceMonthly: 150,
+  otherExpensesAnnual: 300, // catch-all: termites, admin fee, pool maintenance etc.
+  renovationCost: 0,
+  miscFees: 1000,
+  depreciationAnnual: 0,
+  taxRatePct: 32.5,
+  growthCagrPct: 5,
 };
 
 const STATE_NAMES = {
@@ -234,6 +258,7 @@ const PropRatesExports = {
   DEFAULT_UPFRONT_COSTS,
   defaultUpfrontCostsTotal,
   DEFAULT_ONGOING_MONTHLY,
+  DEFAULT_INVESTMENT,
   STATE_NAMES,
   FHB_CONCESSIONS,
   RATES_LAST_VERIFIED,

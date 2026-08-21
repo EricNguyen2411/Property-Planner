@@ -5,6 +5,7 @@ A PWA that works backwards from your actual finances — maximum loan and saving
 - **Afford** — enter your max loan + savings, get your real maximum purchase price
 - **Mortgage** — repayments, total interest, payoff date, extra repayments, offset
 - **Costs** — full upfront cost breakdown for a specific property, plus a "can I afford this" check
+- **Invest** — investment property cashflow: yield, upfront capital required, and cashflow before/after tax across a lower- and higher-rent scenario, with 5/10-year growth projections
 - **Rates** — every stamp duty / LMI / fee assumption the app uses, editable, with a last-verified date
 - Light, dark and system theme
 - Installable to your home screen, works fully offline after first load
@@ -50,7 +51,7 @@ The app then runs offline, with its own icon, no browser chrome.
 Whenever you edit any file, bump the cache version in `service-worker.js`:
 
 ```js
-const CACHE_VERSION = "property-planner-v2"; // increment this
+const CACHE_VERSION = "property-planner-v4"; // increment this
 ```
 
 Then commit and push — GitHub Pages redeploys automatically within a minute or two. On your phone, **fully close** the app (not just background it) and reopen it to pick up the update; the service worker deliberately waits for a clean restart rather than hot-swapping mid-session.
@@ -60,6 +61,10 @@ Then commit and push — GitHub Pages redeploys automatically within a minute or
 Stamp duty brackets, first-home-buyer thresholds and LMI premiums are set by state governments and lenders, and change — sometimes every financial year. All of them live in `js/rates.js`, clearly labelled and commented, with a `RATES_LAST_VERIFIED` date at the top. If your state revenue office publishes new figures, that's the one file to update. The **Rates** tab in the app itself also lists the default upfront costs as editable fields, and shows the first-home-buyer concession notes for every state, so discrepancies are easy to spot.
 
 This is a personal planning tool, not financial or legal advice — always confirm exact figures with your state revenue office, lender, or conveyancer before relying on them.
+
+## Investment cashflow assumptions
+
+The Invest tab separates the tax-deductible interest portion of a loan repayment from the non-deductible principal portion when estimating your after-tax cashflow (a common simplification error in flat spreadsheets is to treat the whole P&I repayment as deductible, which overstates any negative-gearing refund). It doesn't model entity structure (joint ownership, trusts, company ownership) — enter your own effective marginal tax rate instead. This isn't tax advice; check your numbers with an accountant before relying on them.
 
 ## Project structure
 
@@ -71,8 +76,8 @@ property-planner/
 ├── css/
 │   └── styles.css         # design system (light + dark tokens)
 ├── js/
-│   ├── rates.js           # stamp duty / LMI / fee data (edit this to update rates)
-│   ├── calc.js             # mortgage + affordability calculation engine
+│   ├── rates.js           # stamp duty / LMI / fee / investment default data
+│   ├── calc.js             # mortgage, affordability & investment cashflow engine
 │   └── app.js               # UI wiring
 └── icons/
     ├── icon-192.png
