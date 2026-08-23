@@ -54,7 +54,7 @@ const STAMP_DUTY_BRACKETS = {
     { upTo: 372000, base: 1564, rate: 0.035, over: 97000 },
     { upTo: 1240000, base: 11154, rate: 0.045, over: 372000 },
     { upTo: 3870000, base: 50254, rate: 0.055, over: 1240000 },
-    { upTo: Infinity, base: 195904, rate: 0.07, over: 3870000 },
+    { upTo: Infinity, base: 194904, rate: 0.07, over: 3870000 },
   ],
   VIC: [
     { upTo: 25000, base: 0, rate: 0.014, over: 0 },
@@ -109,13 +109,17 @@ const STAMP_DUTY_BRACKETS = {
   NT: { formula: "nt-quadratic" }, // special-cased, see stampDutyNT below
 };
 
-// NT uses a quadratic formula below $525,000, flat rates above.
+// NT uses a quadratic formula below $525,000, flat rates above. This is a
+// genuine feature of the real system, not a smoothing bug: NT applies each
+// flat rate to the ENTIRE property value once a threshold is crossed
+// ("cliff edges"), confirmed across multiple current sources.
 function stampDutyNT(price) {
   if (price <= 525000) {
     const v = price / 1000;
     return 0.06571441 * v * v + 15 * v;
   }
   if (price <= 3000000) return price * 0.0495;
+  if (price <= 5000000) return price * 0.0575;
   return price * 0.0595;
 }
 
@@ -124,9 +128,16 @@ function standardStampDuty(state, price) {
   const brackets = STAMP_DUTY_BRACKETS[state];
   if (!brackets) throw new Error(`Unknown state: ${state}`);
   // ACT top bracket is a flat rate of the *total* value, not marginal-over.
+  // This flat-of-total design is a genuine, confirmed feature of the real
+  // ACT system, but small official rounding at the exact boundary can put
+  // it fractionally below the marginal-bracket value just under the
+  // threshold — guard against duty ever appearing to DECREASE for a more
+  // expensive property, which is never correct regardless of rounding.
   const topBracket = brackets[brackets.length - 1];
   if (topBracket.flatOfTotal && price > brackets[brackets.length - 2].upTo) {
-    return Math.round(price * topBracket.rate);
+    const flatValue = price * topBracket.rate;
+    const valueAtThreshold = applyBrackets(brackets[brackets.length - 2].upTo, brackets);
+    return Math.round(Math.max(flatValue, valueAtThreshold));
   }
   return Math.round(applyBrackets(price, brackets));
 }
@@ -145,7 +156,7 @@ const FHB_CONCESSIONS = {
   WA: { exemptUpTo: 500000, fullDutyAt: 700000, note: "Full exemption to $500,000, sliding concession to $700,000 (metro)." },
   SA: { exemptUpTo: 0, fullDutyAt: 0, note: "No general FHB stamp duty concession on established homes. Relief available for new builds / off-the-plan only  -  not modelled here." },
   TAS: { exemptUpTo: 0, fullDutyAt: 0, note: "Temporary FHB duty exemption lapsed 30 June 2026. Standard duty now applies  -  check for a successor scheme." },
-  ACT: { exemptUpTo: 1020000, fullDutyAt: 1020000, note: "Home Buyer Concession Scheme: full exemption up to $1,020,000, subject to an income test and other eligibility criteria." },
+  ACT: { exemptUpTo: Infinity, fullDutyAt: Infinity, note: "Home Buyer Concession Scheme: full exemption, no property price cap and no income test (both removed from 1 July 2026) — the first uncapped stamp duty exemption in Australia. Other eligibility rules still apply (e.g. living in the home)." },
   NT: { exemptUpTo: 0, fullDutyAt: 0, note: "No general FHB stamp duty concession. A $50,000 HomeGrown Territory grant is available for new homes (not modelled as duty relief)." },
 };
 
@@ -239,6 +250,14 @@ const DEFAULT_INVESTMENT = {
   growthCagrPct: 5,
 };
 
+// A commonly-cited starting point for a cash buffer held back beyond your
+// purchase costs — separate from your deposit — to cover vacancies, rate
+// rises, or unexpected repairs without financial stress. Financial advisors
+// generally suggest 3-6 months of expenses as a baseline; this figure is a
+// commonly-cited specific starting point for someone with one investment
+// property. It scales up with more properties or higher living costs.
+const RECOMMENDED_EMERGENCY_BUFFER = 15000;
+
 const STATE_NAMES = {
   NSW: "New South Wales",
   VIC: "Victoria",
@@ -282,6 +301,7 @@ const PropRatesExports = {
   FHB_CONCESSIONS,
   RENTVESTING_FHB_IMPACT,
   RATES_LAST_VERIFIED,
+  RECOMMENDED_EMERGENCY_BUFFER,
 };
 
 if (typeof module !== "undefined") {

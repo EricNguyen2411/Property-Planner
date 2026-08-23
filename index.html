@@ -31,18 +31,23 @@
 <body>
 <div id="app">
 
-  <!-- ===================== GUIDED WALKTHROUGH BANNER ===================== -->
-  <div class="guided-banner hidden" id="guided-banner">
-    <div class="guided-banner-text">
-      <div class="guided-banner-label" id="guided-banner-label">Step 1 of 4 · Affordability</div>
-      <div class="guided-progress-track"><div class="guided-progress-fill" id="guided-progress-fill" style="width:25%"></div></div>
-    </div>
-    <button class="guided-exit-btn" id="guided-exit">Exit guide</button>
-  </div>
 
+  <!-- ===================== HOME / DASHBOARD ===================== -->
+  <section id="screen-home" class="screen active">
+    <div class="large-title">Your plan</div>
+    <p class="screen-subtitle" id="home-subtitle">Work through these in order — each one builds on the last. Tap any card to start or review it.</p>
+
+    <div id="home-cards"></div>
+
+    <div class="info-note" style="margin-top:22px;">
+      <span class="dot"></span>
+      <span>Need the mortgage stress test, property comparison, buying guide, or glossary? They're all under <strong>More</strong> at the bottom.</span>
+    </div>
+  </section>
 
   <!-- ===================== AFFORD TAB ===================== -->
-  <section id="screen-afford" class="screen active">
+  <section id="screen-afford" class="screen">
+    <button class="back-to-home-link" data-back-home>← Back to your plan</button>
     <div class="large-title">What can I afford?</div>
     <p class="screen-subtitle">Enter your loan capacity and savings — we'll work backwards through stamp duty, LMI and fees to your real maximum purchase price.</p>
 
@@ -230,12 +235,14 @@
 
       <div class="breakdown" id="af-breakdown"></div>
       <div class="status-banner" id="af-status"></div>
-      <button class="btn-primary guided-continue-btn hidden" id="af-guided-continue">Continue to Invest →</button>
+      <div id="af-buffer-note"></div>
+      <button class="btn-primary guided-continue-btn" id="af-guided-continue">Continue to Invest →</button>
     </div>
   </section>
 
   <!-- ===================== MORTGAGE TAB ===================== -->
   <section id="screen-mortgage" class="screen">
+    <button class="back-to-home-link" data-back-more>← Back to More</button>
     <div class="large-title">Mortgage repayments</div>
     <p class="screen-subtitle">See your actual repayment, total interest, and payoff date — with extra repayments and offset.</p>
 
@@ -306,6 +313,7 @@
 
   <!-- ===================== COSTS TAB ===================== -->
   <section id="screen-costs" class="screen">
+    <button class="back-to-home-link" data-back-home>← Back to your plan</button>
     <div class="large-title">What will it cost me?</div>
     <p class="screen-subtitle">Enter a property price to see every upfront cost, and check whether you can actually afford it.</p>
 
@@ -356,6 +364,7 @@
         <div class="hero-caption">on top of your loan</div>
       </div>
       <div id="co-status-wrap"><div class="status-banner" id="co-status"></div></div>
+      <div id="co-buffer-note"></div>
       <div class="breakdown" id="co-breakdown"></div>
 
       <div class="eyebrow">Estimated ongoing costs</div>
@@ -383,12 +392,13 @@
       </div>
       <button class="btn-secondary" id="co-ongoing-calc">Add mortgage repayment for real monthly cost</button>
       <div class="breakdown hidden" id="co-ongoing-breakdown"></div>
-      <button class="btn-primary guided-continue-btn hidden" id="co-guided-continue">Continue to Journey →</button>
+      <button class="btn-primary guided-continue-btn" id="co-guided-continue">Continue to Journey →</button>
     </div>
   </section>
 
   <!-- ===================== INVEST TAB ===================== -->
   <section id="screen-invest" class="screen">
+    <button class="back-to-home-link" data-back-home>← Back to your plan</button>
     <div class="large-title">Investment cashflow</div>
     <p class="screen-subtitle">Yield, and cashflow before and after tax, for an investment property across two rent scenarios.</p>
 
@@ -558,12 +568,58 @@
         <span class="dot"></span>
         <span>Cashflow before tax subtracts your full loan repayment (principal + interest) — what actually leaves your account. For a <strong>new build</strong>, cashflow after tax adds back a tax refund from negative gearing as usual. For an <strong>established</strong> property, the 2026 Budget's tax reform means a loss can no longer offset your salary from FY2027-28 onward — it's carried forward instead, to offset future rental or capital gains income only. This isn't tax advice — check your figures with an accountant.</span>
       </div>
-      <button class="btn-primary guided-continue-btn hidden" id="in-guided-continue">Continue to Costs →</button>
+
+      <div class="eyebrow">If you eventually sell</div>
+      <p class="screen-subtitle" style="margin-top:-4px;">A directional estimate of <span class="term-link" data-term="cgt">capital gains tax</span> and net proceeds — not exact, since the 1 July 2027 reform's precise mechanics weren't finalised when this was written.</p>
+      <div class="group">
+        <div class="row">
+          <span class="row-label">Years held before selling</span>
+          <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="ex-years" placeholder="10" value="10" style="text-align:right"><span>yrs</span></div>
+        </div>
+        <div class="row">
+          <div>
+            <div class="row-label">Selling agent commission</div>
+          </div>
+          <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="ex-commission" placeholder="2.5" value="2.5" style="text-align:right"><span>%</span></div>
+        </div>
+        <div class="row">
+          <span class="row-label">Legal &amp; marketing</span>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="ex-legal" placeholder="1,500" value="1,500"></div>
+        </div>
+        <div class="row">
+          <div>
+            <div class="row-label">Assumed inflation (CPI)</div>
+            <div class="row-sublabel">Used to index your cost base under the new rules</div>
+          </div>
+          <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="ex-cpi" placeholder="2.5" value="2.5" style="text-align:right"><span>%</span></div>
+        </div>
+      </div>
+      <button class="btn-secondary" id="ex-calc">Estimate sale proceeds</button>
+
+      <div id="ex-results" class="hidden">
+        <div class="hero-result">
+          <div class="hero-label">Estimated net proceeds after loan &amp; CGT</div>
+          <div class="hero-number tabular" id="ex-net-proceeds">$0</div>
+          <div class="hero-caption" id="ex-caption"></div>
+        </div>
+        <div class="breakdown" id="ex-breakdown"></div>
+        <div class="info-note">
+          <span class="dot"></span>
+          <span id="ex-method-note"></span>
+        </div>
+        <div class="info-note">
+          <span class="dot"></span>
+          <span>This shows the old 50% discount method and the new post-2027 indexation method as bounding estimates, not a precise calculation — the actual rules split your gain at 1 July 2027 using a professional valuation or an ATO formula, which weren't finalised when this was built. Get a proper valuation and accountant's advice as your sale approaches.</span>
+        </div>
+      </div>
+
+      <button class="btn-primary guided-continue-btn" id="in-guided-continue">Continue to Costs →</button>
     </div>
   </section>
 
   <!-- ===================== JOURNEY TAB ===================== -->
   <section id="screen-journey" class="screen">
+    <button class="back-to-home-link" data-back-home>← Back to your plan</button>
     <div class="large-title">Your property journey</div>
     <p class="screen-subtitle">Investment property now, home to live in later — see how equity from Property 1 could fund the deposit on Property 2.</p>
 
@@ -650,6 +706,7 @@
 
       <div class="eyebrow">Property 2 — maximum price</div>
       <div class="breakdown" id="jy-property2-breakdown"></div>
+      <div id="jy-buffer-note"></div>
 
       <div class="eyebrow">First-home-buyer impact</div>
       <div class="status-banner neutral" id="jy-fhb-warning"></div>
@@ -658,16 +715,23 @@
         <span id="jy-fhb-detail"></span>
       </div>
 
+      <div class="eyebrow">A structuring trap to avoid</div>
+      <div class="info-note">
+        <span class="dot"></span>
+        <span>When you release equity from Property 1 to fund Property 2, watch for <span class="term-link" data-term="crossCollateralisation">cross-collateralisation</span> — a lender using both properties as combined security for the new loan. It's often the default unless you ask otherwise, and it can trap you later: you can't sell or refinance one property without the lender's sign-off on both, and if one drops in value, the lender can call in debt across the whole structure. Ask any lender directly whether your properties will be cross-collateralised, and request standalone security for each if not.</span>
+      </div>
+
       <div class="info-note">
         <span class="dot"></span>
         <span>This assumes you can refinance Property 1 up to your chosen LVR and that a lender approves the new loan — equity release and a second loan both depend on serviceability at the time, not just the numbers here. Treat this as a directional plan, not a guarantee.</span>
       </div>
-      <button class="btn-primary guided-continue-btn hidden" id="jy-guided-continue">Finish walkthrough ✓</button>
+      <button class="btn-primary guided-continue-btn" id="jy-guided-continue">View my summary ✓</button>
     </div>
   </section>
 
   <!-- ===================== COMPARE TAB ===================== -->
   <section id="screen-compare" class="screen">
+    <button class="back-to-home-link" data-back-more>← Back to More</button>
     <div class="large-title">Compare properties</div>
     <p class="screen-subtitle">Save a few real options side by side — price, yield, and cashflow — so you're comparing like-for-like instead of juggling numbers in your head.</p>
 
@@ -707,6 +771,7 @@
 
   <!-- ===================== RATES / SETTINGS TAB ===================== -->
   <section id="screen-rates" class="screen">
+    <button class="back-to-home-link" data-back-more>← Back to More</button>
     <div class="large-title">Rates &amp; assumptions</div>
     <p class="screen-subtitle">Every figure this app uses, in one place. Adjust the defaults if your quotes differ.</p>
 
@@ -733,7 +798,7 @@
     <p class="screen-subtitle" style="margin-top:8px;">These are starting points used on the Invest tab when a field is left blank — edit them directly there for your specific property.</p>
 
     <div class="eyebrow">How to use this app</div>
-    <button class="btn-primary" id="show-guided-again" style="margin-top:0;">Start the guided walkthrough</button>
+    <button class="btn-primary" id="go-to-home-plan" style="margin-top:0;">Go to your plan</button>
     <button class="btn-secondary" id="show-welcome-again">Show the welcome guide again</button>
 
     <div class="eyebrow">The buying process</div>
@@ -759,7 +824,7 @@
         <div class="step-number">3</div>
         <div class="step-content">
           <div class="step-title">Make an offer or bid</div>
-          <div class="step-body">Private sale: you negotiate a price, usually with a small holding deposit. Auction: the highest bid over reserve wins, unconditionally, on the spot — there's no cooling-off period at auction in most states, so all your checks need to happen before auction day, not after.</div>
+          <div class="step-body">Private sale: you negotiate a price, usually with a small holding deposit — make sure the contract includes a <strong>subject-to-finance clause</strong>, so you can walk away and keep your deposit if your loan falls through. Auction: the highest bid over reserve wins, unconditionally, on the spot — there's no cooling-off period at auction in most states and no finance clause protection, so all your checks and formal loan approval need to happen before auction day, not after.</div>
         </div>
       </div>
       <div class="step-row">
@@ -815,35 +880,44 @@
     <div class="rates-footer">Property Planner · a property affordability calculator for Australia<br>Built for personal planning, not financial advice.</div>
   </section>
 
+  <!-- ===================== MORE (tools menu) ===================== -->
+  <section id="screen-more" class="screen">
+    <div class="large-title">More</div>
+    <p class="screen-subtitle">Tools you'll dip into occasionally, rather than step through in order.</p>
+    <div class="group">
+      <div class="row tappable" data-goto="mortgage">
+        <div>
+          <div class="row-label">Mortgage repayments &amp; stress test</div>
+          <div class="row-sublabel">Repayments, payoff time, rate sensitivity</div>
+        </div>
+        <span class="chevron">›</span>
+      </div>
+      <div class="row tappable" data-goto="compare">
+        <div>
+          <div class="row-label">Compare properties</div>
+          <div class="row-sublabel">Save a few real listings side by side</div>
+        </div>
+        <span class="chevron">›</span>
+      </div>
+      <div class="row tappable" data-goto="rates">
+        <div>
+          <div class="row-label">Rates, glossary &amp; buying guide</div>
+          <div class="row-sublabel">Every default, every term, the buying process</div>
+        </div>
+        <span class="chevron">›</span>
+      </div>
+    </div>
+  </section>
+
   <!-- ===================== TAB BAR ===================== -->
   <nav class="tab-bar">
-    <button class="tab-btn active" data-tab="afford">
+    <button class="tab-btn active" data-tab="home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/></svg>
-      Afford
+      Home
     </button>
-    <button class="tab-btn" data-tab="mortgage">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 15V9l6 6V9"/></svg>
-      Mortgage
-    </button>
-    <button class="tab-btn" data-tab="costs">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
-      Costs
-    </button>
-    <button class="tab-btn" data-tab="invest">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/></svg>
-      Invest
-    </button>
-    <button class="tab-btn" data-tab="journey">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="18" r="2.5"/><circle cx="19" cy="6" r="2.5"/><path d="M7 16.5 17 7.5"/></svg>
-      Journey
-    </button>
-    <button class="tab-btn" data-tab="compare">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="6" height="10" rx="1"/><rect x="9" y="4" width="6" height="16" rx="1"/><rect x="15" y="13" width="6" height="7" rx="1"/></svg>
-      Compare
-    </button>
-    <button class="tab-btn" data-tab="rates">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
-      Rates
+    <button class="tab-btn" data-tab="more">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+      More
     </button>
   </nav>
 
@@ -870,7 +944,7 @@
   <div class="welcome-overlay" id="welcome-overlay">
     <div class="welcome-card">
       <div class="welcome-title">Welcome to Property Planner</div>
-      <div class="welcome-subtitle">A suggested order to get the most out of it, especially if property finance is new to you.</div>
+      <div class="welcome-subtitle">Your Home screen shows a plan of 4 steps, in order. Each one builds on the last, and every result shows up right there once you've calculated it — so you always have one place with your full picture.</div>
       <div class="welcome-scroll">
       <div class="step-list">
         <div class="step-row">
@@ -904,7 +978,7 @@
       </div>
       <p class="screen-subtitle" style="margin: 14px 0 0;">Tap any underlined term anywhere in the app for a plain-English explanation. The Rates tab has the full buying process guide and glossary whenever you need them.</p>
       </div>
-      <button class="btn-primary" id="welcome-start-guided">Start the guided walkthrough</button>
+      <button class="btn-primary" id="welcome-start-guided">Go to my plan</button>
       <button class="btn-secondary" id="welcome-dismiss">Explore on my own</button>
     </div>
   </div>

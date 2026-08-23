@@ -1,17 +1,23 @@
 # Property Planner — Australian Property Affordability Calculator
 
-A PWA that works backwards from your actual finances — maximum loan and savings — to your real maximum property price, after stamp duty, LMI and every other upfront cost. Also includes a mortgage repayment calculator and a full purchase-cost breakdown.
+A PWA that works backwards from your actual finances — maximum loan and savings — to your real maximum property price, after stamp duty, LMI and every other upfront cost. Built as a step-by-step plan rather than a set of standalone calculators, so it stays useful even if you've never done this before.
+
+## Navigation
+
+The app opens to **Home** — a dashboard of 4 steps, in order: Afford → Invest → Costs → Journey. Each card shows either "start this step" or, once calculated, the headline result right there on the card. It's both your starting point and your finishing point — the same screen that nudges you through step one shows your full picture once you're done. A "Continue →" button at the end of each step carries your numbers into the next one automatically, so you never retype the same price twice.
+
+**More** (the second tab) holds the tools you'll dip into occasionally rather than step through in order: the mortgage calculator, property comparison, and the rates/glossary/buying-guide reference.
 
 - **Afford** — enter your max loan + savings, get your real maximum purchase price. Includes an optional "estimate my borrowing power from income" panel: salary, other income, rental income (if buying an investment), HECS/HELP, dependents, living expenses and existing debts, run through real FY2026-27 tax brackets and the APRA 3% serviceability buffer to estimate your maximum loan
-- **Mortgage** — repayments, total interest, payoff date, extra repayments, offset
+- **Invest** — investment property cashflow: yield, upfront capital required, and cashflow before/after tax across a lower- and higher-rent scenario, with 5/10-year growth projections and an exit/sale (capital gains tax) estimate. Includes a New Build / Established toggle reflecting the 2026 Budget's negative gearing reform (established properties bought now lose the ability to offset losses against salary from FY2027-28 — new builds are exempt)
 - **Costs** — full upfront cost breakdown for a specific property, plus a "can I afford this" check
-- **Invest** — investment property cashflow: yield, upfront capital required, and cashflow before/after tax across a lower- and higher-rent scenario, with 5/10-year growth projections. Includes a New Build / Established toggle reflecting the 2026 Budget's negative gearing reform (established properties bought now lose the ability to offset losses against salary from FY2027-28 — new builds are exempt)
-- **Journey** — for buying an investment property now and a home to live in later: models Property 1's equity growth, how much of it you could release to fund Property 2's deposit, and flags the state-specific impact on first-home-buyer stamp duty relief and the federal First Home Guarantee
-- **Compare** — save a few real properties side by side (price, deposit, total cash required, yield, cashflow) with a "best cashflow" highlight, so you're comparing like-for-like instead of re-running numbers in your head
-- **Rates** — every stamp duty / LMI / fee assumption the app uses, editable, with a last-verified date, a step-by-step buying process guide, and a full glossary of every term used in the app
-- **Glossary** — tap any dotted-underline term anywhere in the app (Stamp duty, LMI, LVR, Negative gearing, Yield, DTI, and 15 more) for a plain-English explanation in a bottom sheet — helpful if you're new to property
-- A first-run welcome guide offers a **guided walkthrough** — chains Afford → Invest → Costs → Journey in order, carrying your numbers forward automatically at each step so you never retype the same price twice. Restart it anytime from the Rates tab.
-- The Mortgage tab includes a rate stress test showing your repayment from -1% to +3% (the buffer banks assess you at)
+- **Journey** — for buying an investment property now and a home to live in later: models Property 1's equity growth, how much of it you could release to fund Property 2's deposit, warns about cross-collateralisation, and flags the state-specific impact on first-home-buyer stamp duty relief and the federal First Home Guarantee
+- Afford, Costs and Journey all flag it if what you'd have left over falls short of a commonly-recommended emergency buffer
+- **Mortgage** (under More) — repayments, total interest, payoff date, extra repayments, offset, and a rate stress test showing your repayment from -1% to +3% (the buffer banks assess you at)
+- **Compare** (under More) — save a few real properties side by side (price, deposit, total cash required, yield, cashflow) with a "best cashflow" highlight
+- **Rates** (under More) — every stamp duty / LMI / fee assumption the app uses, editable, with a last-verified date, a step-by-step buying process guide, and a full glossary of every term used in the app
+- **Glossary** — tap any dotted-underline term anywhere in the app (Stamp duty, LMI, LVR, Negative gearing, Yield, DTI, and 15 more) for a plain-English explanation in a bottom sheet
+- A first-run welcome screen explains the Home dashboard — reopen it anytime from Rates
 - Light, dark and system theme
 - Installable to your home screen, works fully offline after first load
 - All data stays on your device (localStorage only — nothing is sent anywhere)
@@ -56,7 +62,7 @@ The app then runs offline, with its own icon, no browser chrome.
 Whenever you edit any file, bump the cache version in `service-worker.js`:
 
 ```js
-const CACHE_VERSION = "property-planner-v10"; // increment this
+const CACHE_VERSION = "property-planner-v13"; // increment this
 ```
 
 Then commit and push — GitHub Pages redeploys automatically within a minute or two. On your phone, **fully close** the app (not just background it) and reopen it to pick up the update; the service worker deliberately waits for a clean restart rather than hot-swapping mid-session.
@@ -67,9 +73,24 @@ Stamp duty brackets, first-home-buyer thresholds and LMI premiums are set by sta
 
 This is a personal planning tool, not financial or legal advice — always confirm exact figures with your state revenue office, lender, or conveyancer before relying on them.
 
+### August 2026 audit
+
+A full pass was done checking every calculation and every state's figures against fresh sources. Four real issues were found and fixed:
+- NSW's top stamp duty bracket had a $1,000 transcription error (base should chain to $194,904, not $195,904) — only affects properties over $3.87M
+- ACT and NT's "flat rate on total value" top brackets could, in rare edge cases, make stamp duty *decrease* for a more expensive property — fixed with a monotonicity guard on ACT, and NT was missing its middle 5.75% tier ($3M–$5M) entirely
+- ACT's Home Buyer Concession Scheme was shown with its old $1,020,000 price cap — the cap (and the income test) were actually removed from 1 July 2026, making it Australia's first uncapped stamp duty exemption
+
+All four were edge cases unlikely to affect a typical first-time buyer, except the ACT fix, which matters for any ACT purchase regardless of price.
+
+### August 2026 navigation redesign
+
+The app was rebuilt around a Home dashboard instead of a flat row of tabs. Every calculation engine was left untouched — this was purely a navigation and information-architecture change, re-verified against the full calculation regression suite afterward to confirm nothing broke.
+
 ## Investment cashflow assumptions
 
 The Invest tab separates the tax-deductible interest portion of a loan repayment from the non-deductible principal portion when estimating your after-tax cashflow (a common simplification error in flat spreadsheets is to treat the whole P&I repayment as deductible, which overstates any negative-gearing refund). It doesn't model entity structure (joint ownership, trusts, company ownership) — enter your own effective marginal tax rate instead. It also reflects the 2026 Budget's negative-gearing reform: an established property bought now can't offset a rental loss against your salary from FY2027-28 onward (new builds remain exempt) — select the right property type on the Invest tab for an accurate after-tax figure. This isn't tax advice; check your numbers with an accountant before relying on them.
+
+The exit/sale estimate on the same tab shows two bounding scenarios (the old 50% CGT discount and the new post-1-July-2027 indexation method with its 30% minimum tax rate) rather than a precise calculation — the real rules split your gain at that date using a professional valuation or an ATO formula that wasn't finalised when this was built. Treat it as directional, and get a proper valuation and accountant's advice as an actual sale approaches.
 
 ## Borrowing power assumptions
 

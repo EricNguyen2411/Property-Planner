@@ -76,18 +76,39 @@
   });
 
   // ---------------------------------------------------------------------
-  // Tab navigation
+  // Screen navigation — a generalized switcher, since most screens are no
+  // longer reached via a direct tab-bar button (only Home and More are).
+  // Afford/Invest/Costs/Journey are reached via Home's story cards;
+  // Mortgage/Compare/Rates are reached via the More menu.
   // ---------------------------------------------------------------------
   const tabButtons = document.querySelectorAll(".tab-btn");
   const screens = document.querySelectorAll(".screen");
-  tabButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      tabButtons.forEach((b) => b.classList.remove("active"));
-      screens.forEach((s) => s.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById("screen-" + btn.dataset.tab).classList.add("active");
-      window.scrollTo(0, 0);
+  const HOME_GROUP = ["home", "afford", "invest", "costs", "journey"];
+  const MORE_GROUP = ["more", "mortgage", "compare", "rates"];
+
+  function switchToScreen(screenId) {
+    screens.forEach((s) => s.classList.remove("active"));
+    const target = document.getElementById("screen-" + screenId);
+    if (target) target.classList.add("active");
+    tabButtons.forEach((b) => {
+      const group = b.dataset.tab === "home" ? HOME_GROUP : MORE_GROUP;
+      b.classList.toggle("active", group.includes(screenId));
     });
+    window.scrollTo(0, 0);
+  }
+
+  tabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => switchToScreen(btn.dataset.tab));
+  });
+
+  document.querySelectorAll("[data-back-home]").forEach((btn) => {
+    btn.addEventListener("click", () => switchToScreen("home"));
+  });
+  document.querySelectorAll("[data-back-more]").forEach((btn) => {
+    btn.addEventListener("click", () => switchToScreen("more"));
+  });
+  document.querySelectorAll("[data-goto]").forEach((row) => {
+    row.addEventListener("click", () => switchToScreen(row.dataset.goto));
   });
 
   // ---------------------------------------------------------------------
@@ -288,6 +309,21 @@
   // ---------------------------------------------------------------------
   // AFFORD tab
   // ---------------------------------------------------------------------
+  // Compares what's left over in cash against a commonly-cited emergency
+  // buffer starting point, and renders a note into the given container if
+  // it falls short — separate from (and in addition to) the main status banner.
+  function renderBufferNote(containerId, remainingCash) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const target = R.RECOMMENDED_EMERGENCY_BUFFER;
+    if (remainingCash >= target) {
+      el.innerHTML = "";
+      return;
+    }
+    const shortBy = target - Math.max(remainingCash, 0);
+    el.innerHTML = `<div class="info-note"><span class="dot"></span><span>Beyond your purchase costs, financial advisors commonly suggest keeping a cash buffer of around ${fmt$(target)} for one investment property — for vacancies, rate rises or unexpected repairs. On these numbers you'd have ${fmt$(Math.max(remainingCash, 0))} left, ${fmt$(shortBy)} short of that. Consider a smaller purchase, a bigger deposit, or building this buffer before you commit.</span></div>`;
+  }
+
   document.getElementById("af-calc").addEventListener("click", () => {
     const maxLoanAmount = parseNum(document.getElementById("af-loan").value);
     const availableCash = parseNum(document.getElementById("af-cash").value);
@@ -337,6 +373,13 @@
     } else {
       statusEl.className = "status-banner positive";
       statusEl.textContent = `${fmt$(Math.max(result.remainingCash, 0))} left over in savings after all upfront costs.`;
+    }
+    renderBufferNote("af-buffer-note", result.remainingCash);
+
+    if (!suppressDashboardUpdate) {
+      dashboardSummary.afford = { headline: fmt$(result.maxPrice), sub: `${fmt$(maxLoanAmount)} loan + ${fmt$(availableCash)} savings, in ${state}` };
+      saveDashboardSummary();
+      renderHomeCards();
     }
 
     document.getElementById("af-results").classList.remove("hidden");
@@ -494,12 +537,25 @@
         statusEl.textContent = `❌ You're short by ${fmt$(afford.shortfall)}.`;
       }
       document.getElementById("co-status-wrap").classList.remove("hidden");
+      if (afford.affordable) {
+        renderBufferNote("co-buffer-note", afford.surplus);
+      } else {
+        document.getElementById("co-buffer-note").innerHTML = "";
+      }
     } else {
       document.getElementById("co-status-wrap").classList.add("hidden");
+      document.getElementById("co-buffer-note").innerHTML = "";
     }
 
     document.getElementById("co-ongoing-breakdown").classList.add("hidden");
     document.getElementById("co-results").classList.remove("hidden");
+
+    if (!suppressDashboardUpdate) {
+      dashboardSummary.costs = { headline: fmt$(b.totalCashRequired), sub: `Total cash needed for a ${fmt$(price)} property, in ${state}` };
+      saveDashboardSummary();
+      renderHomeCards();
+    }
+
     saveState();
   });
 
@@ -597,6 +653,15 @@
 
     renderInvestScenario();
     document.getElementById("in-results").classList.remove("hidden");
+
+    if (!suppressDashboardUpdate) {
+      const s = result[activeScenario];
+      const verdict = s.cashflowBeforeTaxAnnual >= 0 ? "Positively geared" : "Costs you out of pocket";
+      dashboardSummary.invest = { headline: `${s.yieldPct.toFixed(2)}% yield`, sub: `${verdict} · ${fmt$signed(s.cashflowBeforeTaxWeekly)}/wk before tax` };
+      saveDashboardSummary();
+      renderHomeCards();
+    }
+
     saveState();
   });
 
@@ -645,6 +710,57 @@
   }
 
   // ---------------------------------------------------------------------
+  // EXIT ESTIMATE (inside Invest tab) — capital gains tax on eventual sale
+  // ---------------------------------------------------------------------
+  document.getElementById("ex-calc").addEventListener("click", () => {
+    if (!lastInvestResult) {
+      alert("Calculate the investment cashflow above first.");
+      return;
+    }
+    const price = parseNum(document.getElementById("in-price").value);
+    const depositPct = parseNum(document.getElementById("in-deposit-pct").value) || 20;
+    const annualRatePct = parseNum(document.getElementById("in-rate").value) || 6.5;
+    const loanTermYears = parseNum(document.getElementById("in-term").value) || 30;
+    const isNewBuild = segVal("in-property-type") === "new";
+    const taxRatePct = parseNum(document.getElementById("in-tax-rate").value) || 32.5;
+
+    const result = C.exitEstimate({
+      price,
+      depositPct,
+      annualRatePct,
+      loanTermYears,
+      stampDuty: lastInvestResult.stampDuty,
+      otherAcquisitionCosts: lastInvestResult.otherUpfrontTotal,
+      growthCagrPct: parseNum(document.getElementById("in-growth").value) || 5,
+      yearsHeld: parseNum(document.getElementById("ex-years").value) || 10,
+      agentCommissionPct: parseNum(document.getElementById("ex-commission").value) || 2.5,
+      legalMarketingFlat: parseNum(document.getElementById("ex-legal").value) || 1500,
+      taxRatePct,
+      assumedCpiPct: parseNum(document.getElementById("ex-cpi").value) || 2.5,
+      isNewBuild,
+    });
+
+    document.getElementById("ex-net-proceeds").textContent = fmt$(result.netProceedsAfterSaleLoanAndTax);
+    document.getElementById("ex-caption").textContent = `Selling at ${fmt$(result.salePrice)} after ${document.getElementById("ex-years").value || 10} years`;
+
+    document.getElementById("ex-breakdown").innerHTML = breakdownRows([
+      ["Estimated sale price", result.salePrice, false],
+      ["Selling costs", -result.sellingCostsTotal, true],
+      ["Remaining loan balance", -result.loanBalanceAtSale, true],
+      ["Capital gains tax", -result.cgtPayable, true],
+      ["Net proceeds", result.netProceedsAfterSaleLoanAndTax, false, true],
+    ]);
+
+    const methodNote = isNewBuild
+      ? `As a new build, you can choose the cheaper method when you sell — on these numbers that's the ${result.methodUsed} method: ${fmt$(result.cgtPayable)} in CGT.`
+      : `As an established property bought now, gains from 1 July 2027 are locked into the indexation method: ${fmt$(result.cgtPayable)} in CGT, using a ${document.getElementById("ex-cpi").value || 2.5}% inflation assumption and a 30% minimum tax rate on the real gain.`;
+    document.getElementById("ex-method-note").textContent = methodNote;
+
+    document.getElementById("ex-results").classList.remove("hidden");
+    saveState();
+  });
+
+  // ---------------------------------------------------------------------
   // JOURNEY tab
   // ---------------------------------------------------------------------
   document.getElementById("jy-calc").addEventListener("click", () => {
@@ -687,6 +803,7 @@
       ["Other purchase costs", -p2.breakdown.otherCostsTotal, true],
       ["Maximum price for Property 2", p2.maxPrice, false, true],
     ]);
+    renderBufferNote("jy-buffer-note", p2.remainingCash);
 
     const fhb = R.RENTVESTING_FHB_IMPACT[selectedState.jy];
     const warningEl = document.getElementById("jy-fhb-warning");
@@ -701,10 +818,16 @@
       fhb.note + " Separately, the federal First Home Guarantee (5% deposit, no LMI) is gone for Property 2 regardless of state, the moment Property 1 settles — this calculator already assumes standard (non-concession) duty and no LMI waiver for Property 2 to reflect that.";
 
     document.getElementById("jy-results").classList.remove("hidden");
+
+    if (!suppressDashboardUpdate) {
+      dashboardSummary.journey = { headline: fmt$(p2.maxPrice), sub: `Max price for Property 2, in ${y.years} years` };
+      saveDashboardSummary();
+      renderHomeCards();
+    }
+
     saveState();
   });
 
-  // ---------------------------------------------------------------------
   // ---------------------------------------------------------------------
   // COMPARE tab
   // ---------------------------------------------------------------------
@@ -1003,7 +1126,7 @@
   document.querySelectorAll('.switch input').forEach((inp) => inp.addEventListener("change", saveState));
 
   // ---------------------------------------------------------------------
-  // Welcome overlay (first run only, re-openable from Rates tab)
+  // Welcome overlay (first run only, re-openable from the Home dashboard)
   // ---------------------------------------------------------------------
   const welcomeOverlay = document.getElementById("welcome-overlay");
   function openWelcome() { welcomeOverlay.classList.add("open"); }
@@ -1012,78 +1135,30 @@
     try { localStorage.setItem("property-planner-welcome-seen", "1"); } catch (e) {}
   }
   document.getElementById("welcome-dismiss").addEventListener("click", closeWelcome);
-  document.getElementById("show-welcome-again").addEventListener("click", openWelcome);
-
-  // ---------------------------------------------------------------------
-  // Guided walkthrough — chains Afford → Invest → Costs → Journey, carrying
-  // the computed numbers forward automatically at each step, so the person
-  // never has to re-type the same price into multiple tabs.
-  // ---------------------------------------------------------------------
-  const GUIDED_STEPS = [
-    { tab: "afford", label: "Step 1 of 4 · Affordability" },
-    { tab: "invest", label: "Step 2 of 4 · Does it stack up?" },
-    { tab: "costs", label: "Step 3 of 4 · Real cash needed" },
-    { tab: "journey", label: "Step 4 of 4 · The long game" },
-  ];
-  let guidedActive = false;
-  let guidedStepIndex = 0;
-
-  function switchToTab(tabName) {
-    const btn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
-    if (btn) btn.click();
-  }
-
-  function updateGuidedBanner() {
-    const banner = document.getElementById("guided-banner");
-    if (!guidedActive) {
-      banner.classList.add("hidden");
-      document.body.classList.remove("guided-mode");
-      return;
-    }
-    const step = GUIDED_STEPS[guidedStepIndex];
-    document.getElementById("guided-banner-label").textContent = step.label;
-    document.getElementById("guided-progress-fill").style.width = `${((guidedStepIndex + 1) / GUIDED_STEPS.length) * 100}%`;
-    banner.classList.remove("hidden");
-    document.body.classList.add("guided-mode");
-  }
-
-  function setGuidedButtonsVisible(visible) {
-    ["af-guided-continue", "in-guided-continue", "co-guided-continue", "jy-guided-continue"].forEach((id) => {
-      document.getElementById(id).classList.toggle("hidden", !visible);
+  const showWelcomeAgainBtn = document.getElementById("show-welcome-again");
+  if (showWelcomeAgainBtn) showWelcomeAgainBtn.addEventListener("click", openWelcome);
+  const goToHomeBtn = document.getElementById("go-to-home-plan");
+  if (goToHomeBtn) goToHomeBtn.addEventListener("click", () => switchToScreen("home"));
+  const welcomeStartBtn = document.getElementById("welcome-start-guided");
+  if (welcomeStartBtn) {
+    welcomeStartBtn.addEventListener("click", () => {
+      closeWelcome();
+      switchToScreen("home");
     });
   }
 
-  function startGuidedWalkthrough() {
-    guidedActive = true;
-    guidedStepIndex = 0;
-    closeWelcome();
-    setGuidedButtonsVisible(true);
-    updateGuidedBanner();
-    switchToTab("afford");
-    document.getElementById("af-borrow-panel").classList.remove("hidden");
-    bpChevron.textContent = "⌄";
-    document.getElementById("af-calc").click();
-    window.scrollTo(0, 0);
-  }
-
-  function exitGuidedMode() {
-    guidedActive = false;
-    setGuidedButtonsVisible(false);
-    updateGuidedBanner();
-  }
-
-  document.getElementById("welcome-start-guided").addEventListener("click", startGuidedWalkthrough);
-  document.getElementById("show-guided-again").addEventListener("click", startGuidedWalkthrough);
-  document.getElementById("guided-exit").addEventListener("click", exitGuidedMode);
-
+  // ---------------------------------------------------------------------
+  // Story chain — carries the computed numbers forward automatically when
+  // moving from one step to the next, so the person never has to re-type
+  // the same price into multiple screens. Continue buttons are always
+  // visible once a step's results are calculated (this IS the app's normal
+  // flow now, not an optional "guided mode").
+  // ---------------------------------------------------------------------
   document.getElementById("af-guided-continue").addEventListener("click", () => {
     const price = parseNum(document.getElementById("af-max-price").textContent);
     document.getElementById("in-price").value = price.toLocaleString("en-AU");
-    guidedStepIndex = 1;
-    updateGuidedBanner();
-    switchToTab("invest");
+    switchToScreen("invest");
     document.getElementById("in-calc").click();
-    window.scrollTo(0, 0);
   });
 
   document.getElementById("in-guided-continue").addEventListener("click", () => {
@@ -1092,11 +1167,8 @@
     if (lastInvestResult) {
       document.getElementById("co-loan").value = Math.round(lastInvestResult.loanAmount).toLocaleString("en-AU");
     }
-    guidedStepIndex = 2;
-    updateGuidedBanner();
-    switchToTab("costs");
+    switchToScreen("costs");
     document.getElementById("co-calc").click();
-    window.scrollTo(0, 0);
   });
 
   document.getElementById("co-guided-continue").addEventListener("click", () => {
@@ -1104,19 +1176,91 @@
     const depositPct = parseNum(document.getElementById("in-deposit-pct").value) || 20;
     document.getElementById("jy-price1").value = price.toLocaleString("en-AU");
     document.getElementById("jy-deposit1").value = depositPct;
-    guidedStepIndex = 3;
-    updateGuidedBanner();
-    switchToTab("journey");
+    switchToScreen("journey");
     document.getElementById("jy-calc").click();
-    window.scrollTo(0, 0);
   });
 
   document.getElementById("jy-guided-continue").addEventListener("click", () => {
-    exitGuidedMode();
-    window.scrollTo(0, 0);
+    switchToScreen("home");
   });
 
+  // ---------------------------------------------------------------------
+  // Home dashboard — a persistent summary of what's been calculated so
+  // far, doubling as the starting point (shows "start here" prompts) and
+  // the finishing point (shows every headline number in one place).
+  // ---------------------------------------------------------------------
+  let dashboardSummary = { afford: null, invest: null, costs: null, journey: null };
+  let suppressDashboardUpdate = true; // true only during the very first auto-run on load
+
+  function saveDashboardSummary() {
+    try { localStorage.setItem("property-planner-dashboard-v1", JSON.stringify(dashboardSummary)); } catch (e) {}
+  }
+  function loadDashboardSummary() {
+    try {
+      const raw = localStorage.getItem("property-planner-dashboard-v1");
+      if (raw) dashboardSummary = JSON.parse(raw);
+    } catch (e) { /* ignore malformed state */ }
+  }
+
+  const STORY_STEPS = [
+    { key: "afford", screen: "afford", title: "What can you afford?", desc: "Your borrowing power and maximum purchase price." },
+    { key: "invest", screen: "invest", title: "Does it stack up?", desc: "Yield and cashflow before and after tax." },
+    { key: "costs", screen: "costs", title: "The real cash needed", desc: "Full upfront cost breakdown and affordability check." },
+    { key: "journey", screen: "journey", title: "The long game", desc: "When you could buy a home to live in, afterward." },
+  ];
+
+  function renderHomeCards() {
+    const container = document.getElementById("home-cards");
+    container.innerHTML = STORY_STEPS.map((step, i) => {
+      const data = dashboardSummary[step.key];
+      const done = !!data;
+      let resultHtml;
+      if (done) {
+        resultHtml = `
+          <div class="story-card-result">
+            <div>
+              <div class="story-card-result-value tabular">${data.headline}</div>
+              <div class="story-card-result-label">${data.sub}</div>
+            </div>
+            <div class="story-card-edit">Review →</div>
+          </div>`;
+      } else {
+        resultHtml = `<div class="story-card-cta">Start this step →</div>`;
+      }
+      return `
+        <div class="story-card ${done ? "done" : ""}" data-goto="${step.screen}">
+          <div class="story-card-header">
+            <div class="story-card-number">${done ? "✓" : i + 1}</div>
+            <div class="story-card-body">
+              <div class="story-card-title">${step.title}</div>
+              <div class="story-card-desc">${step.desc}</div>
+            </div>
+          </div>
+          ${resultHtml}
+        </div>`;
+    }).join("");
+    container.querySelectorAll("[data-goto]").forEach((card) => {
+      card.addEventListener("click", () => {
+        const screen = card.dataset.goto;
+        switchToScreen(screen);
+        // First-ever visit to Afford: open the borrowing-power panel to
+        // guide the very first action, mirroring what a broker would ask first.
+        if (screen === "afford" && !dashboardSummary.afford) {
+          document.getElementById("af-borrow-panel").classList.remove("hidden");
+          bpChevron.textContent = "⌄";
+        }
+      });
+    });
+
+    const allDone = STORY_STEPS.every((s) => dashboardSummary[s.key]);
+    document.getElementById("home-subtitle").textContent = allDone
+      ? "Here's your full picture. Tap any card to review or update it."
+      : "Work through these in order — each one builds on the last. Tap any card to start or review it.";
+  }
+
   restoreState();
+  loadDashboardSummary();
+  renderHomeCards();
 
   try {
     if (!localStorage.getItem("property-planner-welcome-seen")) openWelcome();
@@ -1125,12 +1269,17 @@
   // Auto-run each calculator once on load so the pre-filled example is
   // immediately useful — the person can see real numbers straight away and
   // just override price/loan amount rather than needing to press Calculate
-  // before anything appears.
+  // before anything appears. Dashboard cards stay "not started" through
+  // this pass (suppressDashboardUpdate) — a brand-new user shouldn't see
+  // every step marked done just because of placeholder defaults, though a
+  // returning user's already-saved dashboard summary (loaded further up)
+  // is untouched by this flag either way.
   document.getElementById("af-calc").click();
   document.getElementById("mg-calc").click();
   document.getElementById("co-calc").click();
   document.getElementById("in-calc").click();
   document.getElementById("jy-calc").click();
+  suppressDashboardUpdate = false;
 
   // ---------------------------------------------------------------------
   // Register service worker

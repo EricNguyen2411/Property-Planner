@@ -98,6 +98,16 @@ const GLOSSARY = {
     full: "Cashflow before/after tax",
     definition: "Before tax: what actually leaves your bank account each year — rent in, all expenses and the full loan repayment out. After tax: that same figure adjusted for any tax refund (or extra tax) the property triggers, once negative gearing and depreciation are factored in.",
   },
+  crossCollateralisation: {
+    term: "Cross-collateralisation",
+    full: "Cross-collateralisation",
+    definition: "When a lender uses more than one of your properties as combined security for a loan. It can look convenient — one lender, one relationship — but it means you can't sell, refinance, or switch lenders on one property without the lender's approval across all of them. If one property drops in value, the lender can call in debt across the whole structure, not just that property. Ask any lender directly: \"Will my properties be cross-collateralised?\" and request standalone security if not.",
+  },
+  cgt: {
+    term: "Capital gains tax",
+    full: "CGT",
+    definition: "The tax on the profit when you sell an investment property (sale price minus costs minus what you originally paid). From 1 July 2027, established properties bought after 12 May 2026 are taxed on an inflation-indexed cost base with a 30% minimum tax rate on the real gain, instead of the old 50% discount. New builds keep a choice between the old and new methods when sold.",
+  },
   marginalTaxRate: {
     term: "Marginal tax rate",
     full: "Marginal tax rate",

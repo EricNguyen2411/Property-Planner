@@ -505,6 +505,79 @@ function investmentThenHomeJourney({
   };
 }
 
+// ---------------------------------------------------------------------------
+// Exit / sale estimate — capital gains tax when eventually selling.
+//
+// From 1 July 2027, established residential properties bought after the
+// 2026 Budget (7:30pm 12 May 2026) lose the 50% CGT discount: gains are
+// instead taxed on an inflation-indexed cost base with a 30% MINIMUM tax
+// rate on the real gain. New builds keep a choice between the old 50%
+// discount and the new indexation method when sold.
+//
+// This deliberately shows BOTH methods as bounding estimates rather than
+// trying to precisely model the pre/post-1-July-2027 split of the gain —
+// that requires either a professional valuation or the ATO's apportionment
+// formula, and the exact mechanics were still being finalised at the time
+// this was written. Treat this as directional, not exact.
+// ---------------------------------------------------------------------------
+
+function exitEstimate({
+  price,
+  depositPct,
+  annualRatePct,
+  loanTermYears,
+  stampDuty,
+  otherAcquisitionCosts,
+  growthCagrPct,
+  yearsHeld,
+  agentCommissionPct,
+  legalMarketingFlat,
+  taxRatePct,
+  assumedCpiPct,
+  isNewBuild,
+}) {
+  const loanAmount = price * (1 - depositPct / 100);
+  const salePrice = price * Math.pow(1 + growthCagrPct / 100, yearsHeld);
+  const sellingCostsTotal = salePrice * (agentCommissionPct / 100) + legalMarketingFlat;
+  const costBase = price + stampDuty + otherAcquisitionCosts;
+
+  const loanBalanceAtSale = loanBalanceAfterYears(loanAmount, annualRatePct, loanTermYears, yearsHeld);
+
+  // Old rules: 50% discount on the nominal gain (only meaningful if held > 12 months)
+  const nominalGain = salePrice - sellingCostsTotal - costBase;
+  const heldOverTwelveMonths = yearsHeld >= 1;
+  const taxableGainOld = nominalGain > 0 ? nominalGain * (heldOverTwelveMonths ? 0.5 : 1) : 0;
+  const cgtOld = taxableGainOld * (taxRatePct / 100);
+
+  // New rules (from 1 July 2027): indexed cost base, 30% minimum tax rate on the real gain
+  const indexedCostBase = costBase * Math.pow(1 + assumedCpiPct / 100, yearsHeld);
+  const indexedGain = salePrice - sellingCostsTotal - indexedCostBase;
+  const effectiveRateNew = Math.max(taxRatePct / 100, 0.30);
+  const cgtNew = indexedGain > 0 ? indexedGain * effectiveRateNew : 0;
+
+  // New builds get to choose whichever is cheaper; established properties
+  // bought now are locked into the new rules for any gain from 1 July 2027.
+  const cgtPayable = isNewBuild ? Math.min(cgtOld, cgtNew) : cgtNew;
+  const methodUsed = isNewBuild ? (cgtOld <= cgtNew ? "old (50% discount)" : "new (indexation)") : "new (indexation)";
+
+  const netProceedsAfterSaleLoanAndTax = salePrice - sellingCostsTotal - loanBalanceAtSale - cgtPayable;
+
+  return {
+    salePrice,
+    sellingCostsTotal,
+    costBase,
+    loanBalanceAtSale,
+    nominalGain,
+    cgtOld,
+    indexedCostBase,
+    indexedGain,
+    cgtNew,
+    cgtPayable,
+    methodUsed,
+    netProceedsAfterSaleLoanAndTax,
+  };
+}
+
 const PropCalcExports = {
   mortgageSummary,
   upfrontCosts,
@@ -516,6 +589,7 @@ const PropCalcExports = {
   borrowingPower,
   loanBalanceAfterYears,
   investmentThenHomeJourney,
+  exitEstimate,
   FREQUENCIES,
 };
 
