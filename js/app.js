@@ -446,14 +446,15 @@
       costsTotal: b.stampDuty + b.lmi + b.otherCostsTotal,
     });
 
-    document.getElementById("af-breakdown").innerHTML = breakdownRows([
-      ["Maximum loan", b.loanAmount, false],
-      ["Deposit / cash used", b.deposit, false],
-      ["Stamp duty", -b.stampDuty, true],
-      ["LMI", -b.lmi, true],
-      ["Other purchase costs", -b.otherCostsTotal, true],
-      ["Maximum property price", result.maxPrice, false, true],
-    ]);
+    document.getElementById("af-breakdown").innerHTML =
+      breakdownRows([
+        ["Maximum loan", b.loanAmount, false],
+        ["Deposit / cash used", b.deposit, false],
+        ["Stamp duty", -b.stampDuty, true],
+        ["LMI", -b.lmi, true],
+      ]) +
+      breakdownRowWithCaption("Other purchase costs", -b.otherCostsTotal, OTHER_PURCHASE_COSTS_CAPTION) +
+      breakdownRows([["Maximum property price", result.maxPrice, false, true]]);
 
     const statusEl = document.getElementById("af-status");
     if (keepCashBuffer > 0) {
@@ -516,6 +517,17 @@
       })
       .join("");
   }
+
+  // Single breakdown row with a small caption line under the label,
+  // explaining what a composite/catch-all figure actually includes.
+  function breakdownRowWithCaption(label, amount, caption, isTotal) {
+    const cls = isTotal ? "breakdown-row total" : "breakdown-row";
+    const amtCls = amount < 0 ? "amount negative" : "amount";
+    return `<div class="${cls}"><span>${linkTerms(label)}<div class="breakdown-row-caption">${caption}</div></span><span class="${amtCls} tabular">${fmt$signed(amount)}</span></div>`;
+  }
+
+  const OTHER_PURCHASE_COSTS_CAPTION = "Conveyancing, building &amp; pest inspection, loan fees, registration &amp; moving costs";
+  const MISC_FEES_CAPTION = "Catch-all for anything not itemised elsewhere — e.g. connection fees or last-minute adjustments";
 
   // ---------------------------------------------------------------------
   // MORTGAGE tab
@@ -621,9 +633,10 @@
       ["LMI", -b.lmi, true],
     ];
     if (buyersAgentFee > 0) coBreakdownRows.push(["Buyer's agent fee", -buyersAgentFee, true]);
-    coBreakdownRows.push(["Other purchase costs", -(b.otherCostsTotal - buyersAgentFee), true]);
-    coBreakdownRows.push(["Total cash required", b.totalCashRequired, false, true]);
-    document.getElementById("co-breakdown").innerHTML = breakdownRows(coBreakdownRows);
+    document.getElementById("co-breakdown").innerHTML =
+      breakdownRows(coBreakdownRows) +
+      breakdownRowWithCaption("Other purchase costs", -(b.otherCostsTotal - buyersAgentFee), OTHER_PURCHASE_COSTS_CAPTION) +
+      breakdownRows([["Total cash required", b.totalCashRequired, false, true]]);
 
     const statusEl = document.getElementById("co-status");
     if (availableCash > 0) {
@@ -763,10 +776,11 @@
     ];
     if (investBuyersAgentFee > 0) capitalRows.push(["Buyer's agent fee", -investBuyersAgentFee, true]);
     if (result.renovationCost > 0) capitalRows.push(["Renovation", -result.renovationCost, true]);
-    if (result.miscFees > 0) capitalRows.push(["Misc fees", -result.miscFees, true]);
-    capitalRows.push(["Other purchase costs", -(result.otherUpfrontTotal - investBuyersAgentFee), true]);
-    capitalRows.push(["Total capital required", result.totalCapitalRequired, false, true]);
-    document.getElementById("in-capital-breakdown").innerHTML = breakdownRows(capitalRows);
+    let capitalHtml = breakdownRows(capitalRows);
+    if (result.miscFees > 0) capitalHtml += breakdownRowWithCaption("Misc fees", -result.miscFees, MISC_FEES_CAPTION);
+    capitalHtml += breakdownRowWithCaption("Other purchase costs", -(result.otherUpfrontTotal - investBuyersAgentFee), OTHER_PURCHASE_COSTS_CAPTION);
+    capitalHtml += breakdownRows([["Total capital required", result.totalCapitalRequired, false, true]]);
+    document.getElementById("in-capital-breakdown").innerHTML = capitalHtml;
 
     document.getElementById("in-tag-lower").textContent = `${fmt$(result.lower.rentWeekly)}/wk`;
     document.getElementById("in-tag-higher").textContent = `${fmt$(result.higher.rentWeekly)}/wk`;
@@ -922,15 +936,17 @@
 
     const p2 = result.property2;
     const p2LvrBand = R.lvrBand(p2.breakdown.lvr * 100);
-    document.getElementById("jy-property2-breakdown").innerHTML = breakdownRows([
-      ["Usable equity from Property 1", y.usableEquity, false],
-      ["Additional savings", y.additionalSavingsByThen, false],
-      ["Borrowing capacity (entered)", p2.breakdown.loanAmount, false],
-      ["Stamp duty", -p2.breakdown.stampDuty, true],
-      ["LMI", -p2.breakdown.lmi, true],
-      ["Other purchase costs", -p2.breakdown.otherCostsTotal, true],
-      ["Maximum price for Property 2", p2.maxPrice, false, true],
-    ]) + `<div class="breakdown-row"><span>Loan-to-value ratio</span><span class="amount"><span class="badge-pill ${p2LvrBand.tier}">${(p2.breakdown.lvr * 100).toFixed(0)}% LVR — ${p2LvrBand.label}</span></span></div>`;
+    document.getElementById("jy-property2-breakdown").innerHTML =
+      breakdownRows([
+        ["Usable equity from Property 1", y.usableEquity, false],
+        ["Additional savings", y.additionalSavingsByThen, false],
+        ["Borrowing capacity (entered)", p2.breakdown.loanAmount, false],
+        ["Stamp duty", -p2.breakdown.stampDuty, true],
+        ["LMI", -p2.breakdown.lmi, true],
+      ]) +
+      breakdownRowWithCaption("Other purchase costs", -p2.breakdown.otherCostsTotal, OTHER_PURCHASE_COSTS_CAPTION) +
+      breakdownRows([["Maximum price for Property 2", p2.maxPrice, false, true]]) +
+      `<div class="breakdown-row"><span>Loan-to-value ratio</span><span class="amount"><span class="badge-pill ${p2LvrBand.tier}">${(p2.breakdown.lvr * 100).toFixed(0)}% LVR — ${p2LvrBand.label}</span></span></div>`;
     renderBufferNote("jy-buffer-note", p2.remainingCash);
 
     const fhb = R.RENTVESTING_FHB_IMPACT[selectedState.jy];

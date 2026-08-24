@@ -62,7 +62,7 @@ The app then runs offline, with its own icon, no browser chrome.
 Whenever you edit any file, bump the cache version in `service-worker.js`:
 
 ```js
-const CACHE_VERSION = "property-planner-v17"; // increment this
+const CACHE_VERSION = "property-planner-v18"; // increment this
 ```
 
 Then commit and push — GitHub Pages redeploys automatically within a minute or two. On your phone, **fully close** the app (not just background it) and reopen it to pick up the update; the service worker deliberately waits for a clean restart rather than hot-swapping mid-session.
@@ -102,7 +102,7 @@ A second full audit re-confirmed every previous fix was still intact, then added
 
 ### August 2026 — show your working
 
-The Invest tab's "Total capital required" now has a "Show calculation" toggle underneath it, revealing the exact itemised sum (deposit + stamp duty + LMI + buyer's agent fee + renovation + misc fees + other costs = total) — collapsed by default to keep the hero number clean, one tap away when you want to check the arithmetic yourself.
+The Invest tab's "Total capital required" now has a "Show calculation" toggle underneath it, revealing the exact itemised sum (deposit + stamp duty + LMI + buyer's agent fee + renovation + misc fees + other costs = total) — collapsed by default to keep the hero number clean, one tap away when you want to check the arithmetic yourself. "Other purchase costs" (everywhere it appears — Afford, Costs, Invest, Journey) and "Misc fees" (Invest) now both show a small caption explaining what's actually in them, instead of being an opaque single number.
 
 ## Investment cashflow assumptions
 
