@@ -240,6 +240,42 @@ function yieldBand(yieldPct) {
   return YIELD_BANDS.find((b) => yieldPct <= b.max) || YIELD_BANDS[YIELD_BANDS.length - 1];
 }
 
+// ---------------------------------------------------------------------------
+// Mortgage stress bands — the widely-used Australian benchmark: repayments
+// above 30% of GROSS household income is the standard "mortgage stress"
+// threshold (used by banks, the RBA and researchers since the early 1990s),
+// with severe stress commonly cited around 40-50%+. Deliberately uses gross
+// SALARY/other income only, not rental income from the property being
+// bought — counting a not-yet-earned rent to justify its own loan is
+// circular and optimistic; treat rental as a bonus, not a given.
+// ---------------------------------------------------------------------------
+
+const MORTGAGE_STRESS_BANDS = [
+  { max: 30, label: "Comfortable", tier: "positive" },
+  { max: 40, label: "Elevated — worth reviewing your budget", tier: "neutral" },
+  { max: Infinity, label: "High — commonly classed as mortgage stress", tier: "negative" },
+];
+
+function mortgageStressBand(repaymentToGrossIncomePct) {
+  return MORTGAGE_STRESS_BANDS.find((b) => repaymentToGrossIncomePct <= b.max) || MORTGAGE_STRESS_BANDS[MORTGAGE_STRESS_BANDS.length - 1];
+}
+
+// ---------------------------------------------------------------------------
+// LVR bands — mechanical, not a judgement call: LMI kicks in above 80%,
+// and most lenders restrict or decline lending above ~95%.
+// ---------------------------------------------------------------------------
+
+const LVR_BANDS = [
+  { max: 80, label: "No LMI needed", tier: "positive" },
+  { max: 90, label: "LMI applies", tier: "neutral" },
+  { max: 95, label: "High LVR — fewer lenders", tier: "negative" },
+  { max: Infinity, label: "Above typical lending limits", tier: "negative" },
+];
+
+function lvrBand(lvrPct) {
+  return LVR_BANDS.find((b) => lvrPct <= b.max) || LVR_BANDS[LVR_BANDS.length - 1];
+}
+
 function defaultUpfrontCostsTotal() {
   return Object.values(DEFAULT_UPFRONT_COSTS).reduce((a, b) => a + b, 0);
 }
@@ -336,6 +372,10 @@ const PropRatesExports = {
   DEFAULT_BUYERS_AGENT_PCT,
   YIELD_BANDS,
   yieldBand,
+  MORTGAGE_STRESS_BANDS,
+  mortgageStressBand,
+  LVR_BANDS,
+  lvrBand,
 };
 
 if (typeof module !== "undefined") {

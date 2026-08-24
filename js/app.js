@@ -283,6 +283,13 @@
     });
     lastBorrowingPowerResult = result;
 
+    // Persist gross salary/other income (deliberately excluding rental — see
+    // MORTGAGE_STRESS_BANDS comment) so other screens can stress-test
+    // whatever loan amount they're looking at against real income.
+    try {
+      localStorage.setItem("property-planner-gross-income-v1", JSON.stringify({ grossAnnualIncome: grossSalaryAnnual + parseNum(document.getElementById("bp-other-income").value) }));
+    } catch (e) {}
+
     document.getElementById("bp-max-loan").textContent = fmt$(result.maxLoan);
     document.getElementById("bp-breakdown").innerHTML =
       breakdownRows([
@@ -334,6 +341,34 @@
     el.innerHTML = `<div class="info-note"><span class="dot"></span><span>Beyond your purchase costs, financial advisors commonly suggest keeping a cash buffer of around ${fmt$(target)} for one investment property — for vacancies, rate rises or unexpected repairs. On these numbers you'd have ${fmt$(Math.max(remainingCash, 0))} left, ${fmt$(shortBy)} short of that. Consider a smaller purchase, a bigger deposit, or building this buffer before you commit.</span></div>`;
   }
 
+  // Reads the gross income last entered on the Afford tab's borrowing-power
+  // panel (if any), so other screens can stress-test a specific repayment
+  // against real income without asking for it again.
+  function getKnownGrossIncome() {
+    try {
+      const raw = localStorage.getItem("property-planner-gross-income-v1");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed.grossAnnualIncome > 0 ? parsed.grossAnnualIncome : null;
+    } catch (e) { return null; }
+  }
+
+  // Renders a mortgage-stress banner (repayment vs the 30%-of-gross-income
+  // benchmark) into the given container, or a neutral prompt if no income
+  // has been entered anywhere yet.
+  function renderStressBanner(containerId, annualRepayment) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const grossIncome = getKnownGrossIncome();
+    if (!grossIncome) {
+      el.innerHTML = `<div class="info-note"><span class="dot"></span><span>Enter your income on the Afford tab's "Estimate it from my income" panel to see whether this repayment fits your budget.</span></div>`;
+      return;
+    }
+    const pct = (annualRepayment / grossIncome) * 100;
+    const band = R.mortgageStressBand(pct);
+    el.innerHTML = `<div class="status-banner ${band.tier}">${pct.toFixed(0)}% of your gross income — ${band.label}</div>`;
+  }
+
   document.getElementById("af-calc").addEventListener("click", () => {
     const maxLoanAmount = parseNum(document.getElementById("af-loan").value);
     const availableCash = parseNum(document.getElementById("af-cash").value);
@@ -358,8 +393,9 @@
 
     const b = result.breakdown;
     document.getElementById("af-max-price").textContent = fmt$(result.maxPrice);
-    document.getElementById("af-caption").textContent =
-      `Based on a ${fmt$(maxLoanAmount)} loan and ${fmt$(availableCash)} in savings, in ${state}`;
+    const afLvrBand = R.lvrBand(b.lvr * 100);
+    document.getElementById("af-caption").innerHTML =
+      `Based on a ${fmt$(maxLoanAmount)} loan and ${fmt$(availableCash)} in savings, in ${state} <span class="badge-pill ${afLvrBand.tier}">${(b.lvr * 100).toFixed(0)}% LVR — ${afLvrBand.label}</span>`;
 
     renderLedgerBar(document.getElementById("af-ledger-bar"), {
       loanAmount: b.loanAmount,
@@ -502,6 +538,9 @@
 
     renderStressTest(loanAmount, annualRatePct, termYears, frequency, repaymentType, freqLabel);
 
+    const annualRepayment = (result.repaymentPerPeriod + (result.extraPerPeriod || 0)) * C.FREQUENCIES[frequency];
+    renderStressBanner("mg-stress-banner", annualRepayment);
+
     document.getElementById("mg-results").classList.remove("hidden");
     saveState();
   });
@@ -531,6 +570,8 @@
     lastCostsResult = { price, loanAmount, state, isFirstHomeBuyer, lmiWaived, availableCash };
 
     document.getElementById("co-total").textContent = fmt$(b.totalCashRequired);
+    const coLvrBand = R.lvrBand(b.lvr * 100);
+    document.getElementById("co-caption").innerHTML = `on top of your loan <span class="badge-pill ${coLvrBand.tier}">${(b.lvr * 100).toFixed(0)}% LVR — ${coLvrBand.label}</span>`;
     const coBreakdownRows = [
       ["Deposit", b.deposit, false],
       ["Stamp duty", -b.stampDuty, true],
@@ -660,6 +701,8 @@
 
     lastInvestResult = result;
     document.getElementById("in-capital").textContent = fmt$(result.totalCapitalRequired);
+    const inLvrBand = R.lvrBand((result.loanAmount / result.price) * 100);
+    document.getElementById("in-caption").innerHTML = `deposit, stamp duty, LMI, fees &amp; renovation <span class="badge-pill ${inLvrBand.tier}">${((result.loanAmount / result.price) * 100).toFixed(0)}% LVR — ${inLvrBand.label}</span>`;
     document.getElementById("in-tag-lower").textContent = `${fmt$(result.lower.rentWeekly)}/wk`;
     document.getElementById("in-tag-higher").textContent = `${fmt$(result.higher.rentWeekly)}/wk`;
 
@@ -690,7 +733,7 @@
     const band = R.yieldBand(s.yieldPct);
     document.getElementById("in-yield-breakdown").innerHTML =
       breakdownRows([["Gross rent (annual)", s.grossRentAnnual, false]]) +
-      `<div class="breakdown-row total"><span class="term-link" data-term="yield">Yield on purchase</span><span class="amount tabular">${s.yieldPct.toFixed(2)}% <span class="yield-badge ${band.tier}">${band.label}</span></span></div>`;
+      `<div class="breakdown-row total"><span class="term-link" data-term="yield">Yield on purchase</span><span class="amount tabular">${s.yieldPct.toFixed(2)}% <span class="badge-pill ${band.tier}">${band.label}</span></span></div>`;
 
     document.getElementById("in-before-tax-breakdown").innerHTML = breakdownRows([
       ["Gross rent", s.grossRentAnnual, false],
@@ -813,6 +856,7 @@
     document.getElementById("jy-deposit2").textContent = fmt$(y.totalDepositAvailable);
 
     const p2 = result.property2;
+    const p2LvrBand = R.lvrBand(p2.breakdown.lvr * 100);
     document.getElementById("jy-property2-breakdown").innerHTML = breakdownRows([
       ["Usable equity from Property 1", y.usableEquity, false],
       ["Additional savings", y.additionalSavingsByThen, false],
@@ -821,7 +865,7 @@
       ["LMI", -p2.breakdown.lmi, true],
       ["Other purchase costs", -p2.breakdown.otherCostsTotal, true],
       ["Maximum price for Property 2", p2.maxPrice, false, true],
-    ]);
+    ]) + `<div class="breakdown-row"><span>Loan-to-value ratio</span><span class="amount"><span class="badge-pill ${p2LvrBand.tier}">${(p2.breakdown.lvr * 100).toFixed(0)}% LVR — ${p2LvrBand.label}</span></span></div>`;
     renderBufferNote("jy-buffer-note", p2.remainingCash);
 
     const fhb = R.RENTVESTING_FHB_IMPACT[selectedState.jy];

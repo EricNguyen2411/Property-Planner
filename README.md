@@ -62,7 +62,7 @@ The app then runs offline, with its own icon, no browser chrome.
 Whenever you edit any file, bump the cache version in `service-worker.js`:
 
 ```js
-const CACHE_VERSION = "property-planner-v14"; // increment this
+const CACHE_VERSION = "property-planner-v15"; // increment this
 ```
 
 Then commit and push — GitHub Pages redeploys automatically within a minute or two. On your phone, **fully close** the app (not just background it) and reopen it to pick up the update; the service worker deliberately waits for a clean restart rather than hot-swapping mid-session.
@@ -89,6 +89,12 @@ The app was rebuilt around a Home dashboard instead of a flat row of tabs. Every
 ### August 2026 — buyer's agent costs & yield benchmarks
 
 Added an optional buyer's agent fee (Costs and Invest tabs, toggle-on, defaults to 2% of price — typical range researched at 1.5-3%, or a flat $8,000-$30,000). Also added a small "moving costs" default ($1,500) to the standard upfront cost list, since it's a commonly-forgotten line item — this modestly reduces every affordability calculation's max price versus before, which is intentional and correct, not a bug. Yield now shows a colour-coded benchmark badge (Low / Solid / Strong / Very high) based on researched national gross-yield bands, with an explicit caveat that "good" varies hugely by location and property type.
+
+### August 2026 — full audit and red/amber/green warnings
+
+A second full audit re-confirmed every previous fix was still intact, then added:
+- **Mortgage stress warning** (Mortgage tab) — repayments as a percentage of your gross income, benchmarked against the standard Australian "mortgage stress" thresholds (30% = stress, 40%+ = severe, both well-established figures used by banks, the RBA and researchers). Deliberately uses your salary/other income only, never the property's own not-yet-earned rent, so it can't optimistically justify itself. If no income has been entered yet, it shows a neutral prompt rather than guessing.
+- **LVR badges** (Afford, Costs, Invest, Journey) — colour-coded loan-to-value ratio wherever a loan and price are both known: green under 80% (no LMI), amber 80-95% (LMI applies / fewer lenders), red above that (above typical lending limits).
 
 ## Investment cashflow assumptions
 
