@@ -62,7 +62,7 @@ The app then runs offline, with its own icon, no browser chrome.
 Whenever you edit any file, bump the cache version in `service-worker.js`:
 
 ```js
-const CACHE_VERSION = "property-planner-v16"; // increment this
+const CACHE_VERSION = "property-planner-v17"; // increment this
 ```
 
 Then commit and push — GitHub Pages redeploys automatically within a minute or two. On your phone, **fully close** the app (not just background it) and reopen it to pick up the update; the service worker deliberately waits for a clean restart rather than hot-swapping mid-session.
@@ -99,6 +99,10 @@ Every deposit % field (Invest, Journey, Compare) now shows a live "≈ $X" reado
 A second full audit re-confirmed every previous fix was still intact, then added:
 - **Mortgage stress warning** (Mortgage tab) — repayments as a percentage of your gross income, benchmarked against the standard Australian "mortgage stress" thresholds (30% = stress, 40%+ = severe, both well-established figures used by banks, the RBA and researchers). Deliberately uses your salary/other income only, never the property's own not-yet-earned rent, so it can't optimistically justify itself. If no income has been entered yet, it shows a neutral prompt rather than guessing.
 - **LVR badges** (Afford, Costs, Invest, Journey) — colour-coded loan-to-value ratio wherever a loan and price are both known: green under 80% (no LMI), amber 80-95% (LMI applies / fewer lenders), red above that (above typical lending limits).
+
+### August 2026 — show your working
+
+The Invest tab's "Total capital required" now has a "Show calculation" toggle underneath it, revealing the exact itemised sum (deposit + stamp duty + LMI + buyer's agent fee + renovation + misc fees + other costs = total) — collapsed by default to keep the hero number clean, one tap away when you want to check the arithmetic yourself.
 
 ## Investment cashflow assumptions
 

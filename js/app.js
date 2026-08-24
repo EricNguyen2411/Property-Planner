@@ -706,6 +706,14 @@
     if (lastInvestResult) renderInvestScenario();
   });
 
+  document.getElementById("in-capital-toggle").addEventListener("click", () => {
+    const el = document.getElementById("in-capital-breakdown");
+    const btn = document.getElementById("in-capital-toggle");
+    const isHidden = el.classList.contains("hidden");
+    el.classList.toggle("hidden", !isHidden);
+    btn.textContent = isHidden ? "Hide calculation ⌄" : "Show calculation ›";
+  });
+
   document.getElementById("in-calc").addEventListener("click", () => {
     const price = parseNum(document.getElementById("in-price").value);
     if (price <= 0) {
@@ -713,6 +721,9 @@
       return;
     }
     const D = R.DEFAULT_INVESTMENT;
+    const investBuyersAgentFee = document.getElementById("in-buyers-agent").checked
+      ? getFeeModeDollarAmount({ modeId: "in-buyers-agent-mode", price, pctFieldId: "in-buyers-agent-pct", flatFieldId: "in-buyers-agent-flat" })
+      : 0;
     const result = C.investmentAnalysis({
       price,
       depositPct: parseNum(document.getElementById("in-deposit-pct").value) || 20,
@@ -737,15 +748,26 @@
       depreciationAnnual: parseNum(document.getElementById("in-depreciation").value),
       growthCagrPct: parseNum(document.getElementById("in-growth").value) || D.growthCagrPct,
       negativeGearingQuarantined: segVal("in-property-type") === "established",
-      buyersAgentFee: document.getElementById("in-buyers-agent").checked
-        ? getFeeModeDollarAmount({ modeId: "in-buyers-agent-mode", price, pctFieldId: "in-buyers-agent-pct", flatFieldId: "in-buyers-agent-flat" })
-        : 0,
+      buyersAgentFee: investBuyersAgentFee,
     });
 
     lastInvestResult = result;
     document.getElementById("in-capital").textContent = fmt$(result.totalCapitalRequired);
     const inLvrBand = R.lvrBand((result.loanAmount / result.price) * 100);
     document.getElementById("in-caption").innerHTML = `deposit, stamp duty, LMI, fees &amp; renovation <span class="badge-pill ${inLvrBand.tier}">${((result.loanAmount / result.price) * 100).toFixed(0)}% LVR — ${inLvrBand.label}</span>`;
+
+    const capitalRows = [
+      ["Deposit", result.deposit, false],
+      ["Stamp duty", -result.stampDuty, true],
+      ["LMI", -result.lmi, true],
+    ];
+    if (investBuyersAgentFee > 0) capitalRows.push(["Buyer's agent fee", -investBuyersAgentFee, true]);
+    if (result.renovationCost > 0) capitalRows.push(["Renovation", -result.renovationCost, true]);
+    if (result.miscFees > 0) capitalRows.push(["Misc fees", -result.miscFees, true]);
+    capitalRows.push(["Other purchase costs", -(result.otherUpfrontTotal - investBuyersAgentFee), true]);
+    capitalRows.push(["Total capital required", result.totalCapitalRequired, false, true]);
+    document.getElementById("in-capital-breakdown").innerHTML = breakdownRows(capitalRows);
+
     document.getElementById("in-tag-lower").textContent = `${fmt$(result.lower.rentWeekly)}/wk`;
     document.getElementById("in-tag-higher").textContent = `${fmt$(result.higher.rentWeekly)}/wk`;
 
