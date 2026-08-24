@@ -135,6 +135,7 @@
   const stateSheetList = document.getElementById("state-sheet-list");
   let activeStateTarget = null; // 'af', 'co', 'in', 'jy' or 'cp'
   let selectedState = { af: "NSW", co: "NSW", in: "NSW", jy: "NSW", cp: "NSW" };
+  const SHARED_STATE_TARGETS = ["af", "co", "in", "jy"]; // cp intentionally excluded — different properties
 
   function renderStateSheetList() {
     stateSheetList.innerHTML = "";
@@ -145,6 +146,14 @@
       opt.addEventListener("click", () => {
         selectedState[activeStateTarget] = code;
         document.getElementById(activeStateTarget + "-state-value").innerHTML = `${code} <span class="chevron">›</span>`;
+        if (SHARED_STATE_TARGETS.includes(activeStateTarget)) {
+          SHARED_STATE_TARGETS.forEach((t) => {
+            if (t === activeStateTarget) return;
+            selectedState[t] = code;
+            const valEl = document.getElementById(t + "-state-value");
+            if (valEl) valEl.innerHTML = `${code} <span class="chevron">›</span>`;
+          });
+        }
         closeSheet();
         saveState();
       });
@@ -168,6 +177,103 @@
   document.getElementById("in-state-row").addEventListener("click", () => openSheet("in"));
   document.getElementById("jy-state-row").addEventListener("click", () => openSheet("jy"));
   document.getElementById("cp-state-row").addEventListener("click", () => openSheet("cp"));
+
+  // ---------------------------------------------------------------------
+  // Shared property fields — price, deposit %, loan amount and interest
+  // rate stay in sync live across Invest, Costs, Journey (Property 1) and
+  // Mortgage, so there's no mismatch as you move between screens, whether
+  // or not you use the "Continue" buttons. Price/deposit%/loan are a
+  // three-variable relationship — editing any one recomputes the other
+  // two consistently. State/territory syncs the same way (handled above,
+  // inside the state picker) across every screen except Compare, which is
+  // deliberately independent since each saved entry is a different property.
+  // ---------------------------------------------------------------------
+  const SHARED_PRICE_FIELDS = ["in-price", "co-price", "jy-price1"];
+  const SHARED_DEPOSIT_PCT_FIELDS = ["in-deposit-pct", "jy-deposit1"];
+  const SHARED_LOAN_FIELDS = ["co-loan", "mg-loan"];
+  const SHARED_RATE_FIELDS = ["in-rate", "jy-rate1", "mg-rate", "bp-rate"];
+
+  let sharedProperty = { price: null, depositPct: null, loanAmount: null, rate: null };
+
+  function saveSharedProperty() {
+    try { localStorage.setItem("property-planner-shared-v1", JSON.stringify(sharedProperty)); } catch (e) {}
+  }
+  function loadSharedProperty() {
+    try {
+      const raw = localStorage.getItem("property-planner-shared-v1");
+      if (raw) sharedProperty = JSON.parse(raw);
+    } catch (e) { /* ignore malformed state */ }
+  }
+
+  function propagateShared(sourceId) {
+    SHARED_PRICE_FIELDS.forEach((id) => {
+      if (id === sourceId || sharedProperty.price == null) return;
+      const el = document.getElementById(id);
+      if (el) el.value = Math.round(sharedProperty.price).toLocaleString("en-AU");
+    });
+    SHARED_DEPOSIT_PCT_FIELDS.forEach((id) => {
+      if (id === sourceId || sharedProperty.depositPct == null) return;
+      const el = document.getElementById(id);
+      if (el) el.value = Math.round(sharedProperty.depositPct * 100) / 100;
+    });
+    SHARED_LOAN_FIELDS.forEach((id) => {
+      if (id === sourceId || sharedProperty.loanAmount == null) return;
+      const el = document.getElementById(id);
+      if (el) el.value = Math.round(sharedProperty.loanAmount).toLocaleString("en-AU");
+    });
+    SHARED_RATE_FIELDS.forEach((id) => {
+      if (id === sourceId || sharedProperty.rate == null) return;
+      const el = document.getElementById(id);
+      if (el) el.value = sharedProperty.rate;
+    });
+    saveSharedProperty();
+    saveState();
+  }
+
+  function onSharedPriceInput(sourceId) {
+    const val = parseNum(document.getElementById(sourceId).value);
+    if (val <= 0) return;
+    sharedProperty.price = val;
+    if (sharedProperty.depositPct != null) {
+      sharedProperty.loanAmount = val * (1 - sharedProperty.depositPct / 100);
+    } else if (sharedProperty.loanAmount != null) {
+      sharedProperty.depositPct = Math.max(0, Math.min(100, (1 - sharedProperty.loanAmount / val) * 100));
+    }
+    propagateShared(sourceId);
+  }
+  function onSharedDepositPctInput(sourceId) {
+    const val = parseNum(document.getElementById(sourceId).value);
+    sharedProperty.depositPct = val;
+    if (sharedProperty.price != null) {
+      sharedProperty.loanAmount = sharedProperty.price * (1 - val / 100);
+    }
+    propagateShared(sourceId);
+  }
+  function onSharedLoanInput(sourceId) {
+    const val = parseNum(document.getElementById(sourceId).value);
+    if (val <= 0) return;
+    sharedProperty.loanAmount = val;
+    if (sharedProperty.price != null && sharedProperty.price > 0) {
+      sharedProperty.depositPct = Math.max(0, Math.min(100, (1 - val / sharedProperty.price) * 100));
+    }
+    propagateShared(sourceId);
+  }
+  function onSharedRateInput(sourceId) {
+    const val = parseNum(document.getElementById(sourceId).value);
+    if (val <= 0) return;
+    sharedProperty.rate = val;
+    propagateShared(sourceId);
+  }
+
+  function wireSharedField(id, handler) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("blur", () => handler(id));
+  }
+  SHARED_PRICE_FIELDS.forEach((id) => wireSharedField(id, onSharedPriceInput));
+  SHARED_DEPOSIT_PCT_FIELDS.forEach((id) => wireSharedField(id, onSharedDepositPctInput));
+  SHARED_LOAN_FIELDS.forEach((id) => wireSharedField(id, onSharedLoanInput));
+  SHARED_RATE_FIELDS.forEach((id) => wireSharedField(id, onSharedRateInput));
 
   // ---------------------------------------------------------------------
   // Glossary sheet — opens for any tap on a .term-link, anywhere in the app,
@@ -1167,11 +1273,33 @@
     "in-reno", "in-misc", "in-bldg-ins", "in-ll-ins", "in-mgmt-pct",
     "in-leasing", "in-vacancy", "in-land-tax", "in-strata", "in-maint",
     "in-other-exp", "in-rent-low", "in-rent-high", "in-tax-rate",
-    "in-depreciation", "in-growth",
+    "in-depreciation", "in-growth", "in-buyers-agent-pct", "in-buyers-agent-flat",
   ];
+  const BP_FIELD_IDS = [
+    "bp-salary", "bp-other-income", "bp-rent", "bp-rent-shade", "bp-dependents",
+    "bp-living", "bp-cc-limit", "bp-personal-loan", "bp-other-loan",
+    "bp-existing-balances", "bp-rate", "bp-term",
+  ];
+  const JY_FIELD_IDS = [
+    "jy-price1", "jy-deposit1", "jy-rate1", "jy-term1", "jy-growth1",
+    "jy-years", "jy-equity-lvr", "jy-savings", "jy-loan2",
+  ];
+  const CP_FIELD_IDS = ["cp-label", "cp-price", "cp-deposit-pct", "cp-rent", "cp-rate"];
+  const CO_FIELD_IDS = ["co-price", "co-loan", "co-cash", "co-buyers-agent-pct", "co-buyers-agent-flat"];
 
   function saveState() {
     try {
+      const invVals = {};
+      INVEST_FIELD_IDS.forEach((id) => { invVals[id] = document.getElementById(id).value; });
+      const bpVals = {};
+      BP_FIELD_IDS.forEach((id) => { bpVals[id] = document.getElementById(id).value; });
+      const jyVals = {};
+      JY_FIELD_IDS.forEach((id) => { jyVals[id] = document.getElementById(id).value; });
+      const cpVals = {};
+      CP_FIELD_IDS.forEach((id) => { cpVals[id] = document.getElementById(id).value; });
+      const coVals = {};
+      CO_FIELD_IDS.forEach((id) => { coVals[id] = document.getElementById(id).value; });
+
       const state = {
         af: {
           loan: document.getElementById("af-loan").value,
@@ -1180,6 +1308,10 @@
           state: selectedState.af,
           fhb: document.getElementById("af-fhb").checked,
           lmiWaived: document.getElementById("af-lmi-waived").checked,
+          use: segVal("af-use"),
+          bp: bpVals,
+          bpIsInvestment: document.getElementById("bp-is-investment").checked,
+          bpHecs: document.getElementById("bp-hecs").checked,
         },
         mg: {
           loan: document.getElementById("mg-loan").value,
@@ -1191,19 +1323,22 @@
           offset: document.getElementById("mg-offset").value,
         },
         co: {
-          price: document.getElementById("co-price").value,
-          loan: document.getElementById("co-loan").value,
-          cash: document.getElementById("co-cash").value,
+          ...coVals,
           state: selectedState.co,
           fhb: document.getElementById("co-fhb").checked,
           lmiWaived: document.getElementById("co-lmi-waived").checked,
+          buyersAgent: document.getElementById("co-buyers-agent").checked,
+          buyersAgentMode: segVal("co-buyers-agent-mode"),
         },
-        in: (() => {
-          const vals = {};
-          INVEST_FIELD_IDS.forEach((id) => { vals[id] = document.getElementById(id).value; });
-          vals.state = selectedState.in;
-          return vals;
-        })(),
+        in: {
+          ...invVals,
+          state: selectedState.in,
+          buyersAgent: document.getElementById("in-buyers-agent").checked,
+          buyersAgentMode: segVal("in-buyers-agent-mode"),
+          propertyType: segVal("in-property-type"),
+        },
+        jy: { ...jyVals, state: selectedState.jy },
+        cp: { ...cpVals, state: selectedState.cp },
       };
       localStorage.setItem("property-planner-state-v1", JSON.stringify(state));
     } catch (e) { /* storage unavailable - ignore */ }
@@ -1229,6 +1364,14 @@
         document.getElementById("af-fhb").checked = !!s.af.fhb;
         document.getElementById("af-lmi-waived").checked = !!s.af.lmiWaived;
         document.getElementById("af-lmi-waived-row").classList.toggle("hidden", !s.af.fhb);
+        setSeg("af-use", s.af.use);
+        if (s.af.bp) BP_FIELD_IDS.forEach((id) => setIfPresent(id, s.af.bp[id]));
+        if (s.af.bpIsInvestment !== undefined) {
+          document.getElementById("bp-is-investment").checked = !!s.af.bpIsInvestment;
+          document.getElementById("bp-rent-row").classList.toggle("hidden", !s.af.bpIsInvestment);
+          document.getElementById("bp-rent-shade-row").classList.toggle("hidden", !s.af.bpIsInvestment);
+        }
+        if (s.af.bpHecs !== undefined) document.getElementById("bp-hecs").checked = !!s.af.bpHecs;
       }
       if (s.mg) {
         setIfPresent("mg-loan", s.mg.loan);
@@ -1240,19 +1383,40 @@
         setSeg("mg-freq", s.mg.freq);
       }
       if (s.co) {
-        setIfPresent("co-price", s.co.price);
-        setIfPresent("co-loan", s.co.loan);
-        setIfPresent("co-cash", s.co.cash);
+        CO_FIELD_IDS.forEach((id) => setIfPresent(id, s.co[id]));
         selectedState.co = s.co.state || "NSW";
         document.getElementById("co-state-value").innerHTML = `${selectedState.co} <span class="chevron">›</span>`;
         document.getElementById("co-fhb").checked = !!s.co.fhb;
         document.getElementById("co-lmi-waived").checked = !!s.co.lmiWaived;
         document.getElementById("co-lmi-waived-row").classList.toggle("hidden", !s.co.fhb);
+        document.getElementById("co-buyers-agent").checked = !!s.co.buyersAgent;
+        document.getElementById("co-buyers-agent-fee-row").classList.toggle("hidden", !s.co.buyersAgent);
+        setSeg("co-buyers-agent-mode", s.co.buyersAgentMode);
+        const coFlat = s.co.buyersAgentMode === "flat";
+        document.getElementById("co-buyers-agent-pct-row").classList.toggle("hidden", coFlat);
+        document.getElementById("co-buyers-agent-flat-row").classList.toggle("hidden", !coFlat);
       }
       if (s.in) {
         INVEST_FIELD_IDS.forEach((id) => setIfPresent(id, s.in[id]));
         selectedState.in = s.in.state || "NSW";
         document.getElementById("in-state-value").innerHTML = `${selectedState.in} <span class="chevron">›</span>`;
+        document.getElementById("in-buyers-agent").checked = !!s.in.buyersAgent;
+        document.getElementById("in-buyers-agent-fee-row").classList.toggle("hidden", !s.in.buyersAgent);
+        setSeg("in-buyers-agent-mode", s.in.buyersAgentMode);
+        const inFlat = s.in.buyersAgentMode === "flat";
+        document.getElementById("in-buyers-agent-pct-row").classList.toggle("hidden", inFlat);
+        document.getElementById("in-buyers-agent-flat-row").classList.toggle("hidden", !inFlat);
+        setSeg("in-property-type", s.in.propertyType);
+      }
+      if (s.jy) {
+        JY_FIELD_IDS.forEach((id) => setIfPresent(id, s.jy[id]));
+        selectedState.jy = s.jy.state || "NSW";
+        document.getElementById("jy-state-value").innerHTML = `${selectedState.jy} <span class="chevron">›</span>`;
+      }
+      if (s.cp) {
+        CP_FIELD_IDS.forEach((id) => setIfPresent(id, s.cp[id]));
+        selectedState.cp = s.cp.state || "NSW";
+        document.getElementById("cp-state-value").innerHTML = `${selectedState.cp} <span class="chevron">›</span>`;
       }
     } catch (e) { /* ignore malformed state */ }
   }
@@ -1304,25 +1468,17 @@
   document.getElementById("af-guided-continue").addEventListener("click", () => {
     const price = parseNum(document.getElementById("af-max-price").textContent);
     document.getElementById("in-price").value = price.toLocaleString("en-AU");
+    onSharedPriceInput("in-price");
     switchToScreen("invest");
     document.getElementById("in-calc").click();
   });
 
   document.getElementById("in-guided-continue").addEventListener("click", () => {
-    const price = parseNum(document.getElementById("in-price").value);
-    document.getElementById("co-price").value = price.toLocaleString("en-AU");
-    if (lastInvestResult) {
-      document.getElementById("co-loan").value = Math.round(lastInvestResult.loanAmount).toLocaleString("en-AU");
-    }
     switchToScreen("costs");
     document.getElementById("co-calc").click();
   });
 
   document.getElementById("co-guided-continue").addEventListener("click", () => {
-    const price = parseNum(document.getElementById("co-price").value);
-    const depositPct = parseNum(document.getElementById("in-deposit-pct").value) || 20;
-    document.getElementById("jy-price1").value = price.toLocaleString("en-AU");
-    document.getElementById("jy-deposit1").value = depositPct;
     switchToScreen("journey");
     document.getElementById("jy-calc").click();
   });
@@ -1423,6 +1579,21 @@
   restoreState();
   loadDashboardSummary();
   renderHomeCards();
+
+  // Establish a coherent baseline across every screen before the first
+  // auto-run: if this browser already has a shared-property baseline
+  // saved, push it into every field (so a reload doesn't reintroduce a
+  // mismatch); otherwise seed the baseline from the Invest tab's current
+  // values, so price/deposit/loan/rate agree everywhere from the very
+  // first load rather than each tab showing its own unrelated default.
+  loadSharedProperty();
+  if (sharedProperty.price == null && sharedProperty.loanAmount == null) {
+    onSharedPriceInput("in-price");
+    onSharedDepositPctInput("in-deposit-pct");
+    onSharedRateInput("in-rate");
+  } else {
+    propagateShared(null);
+  }
 
   try {
     if (!localStorage.getItem("property-planner-welcome-seen")) openWelcome();

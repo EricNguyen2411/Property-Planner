@@ -62,7 +62,7 @@ The app then runs offline, with its own icon, no browser chrome.
 Whenever you edit any file, bump the cache version in `service-worker.js`:
 
 ```js
-const CACHE_VERSION = "property-planner-v18"; // increment this
+const CACHE_VERSION = "property-planner-v20"; // increment this
 ```
 
 Then commit and push — GitHub Pages redeploys automatically within a minute or two. On your phone, **fully close** the app (not just background it) and reopen it to pick up the update; the service worker deliberately waits for a clean restart rather than hot-swapping mid-session.
@@ -99,6 +99,14 @@ Every deposit % field (Invest, Journey, Compare) now shows a live "≈ $X" reado
 A second full audit re-confirmed every previous fix was still intact, then added:
 - **Mortgage stress warning** (Mortgage tab) — repayments as a percentage of your gross income, benchmarked against the standard Australian "mortgage stress" thresholds (30% = stress, 40%+ = severe, both well-established figures used by banks, the RBA and researchers). Deliberately uses your salary/other income only, never the property's own not-yet-earned rent, so it can't optimistically justify itself. If no income has been entered yet, it shows a neutral prompt rather than guessing.
 - **LVR badges** (Afford, Costs, Invest, Journey) — colour-coded loan-to-value ratio wherever a loan and price are both known: green under 80% (no LMI), amber 80-95% (LMI applies / fewer lenders), red above that (above typical lending limits).
+
+### August 2026 — full persistence
+
+Previously, several fields didn't survive closing and reopening the app: the buyer's agent fee toggle/amount on both Costs and Invest, the Invest tab's New Build/Established selector, everything on the Journey and Compare tabs, and the whole borrowing-power income panel. All of it now saves and restores correctly, matched to the exact form state you left it in (including which buyer's agent fee mode — % or flat $ — was selected).
+
+### August 2026 — live shared property fields
+
+Property price, deposit %, loan amount, interest rate and state/territory now stay in sync live across the Invest, Costs, Journey (Property 1) and Mortgage tabs — not just when you use the "Continue" buttons, but the moment you edit any of them, in any order, from any screen. Price/deposit %/loan amount are a three-variable relationship: editing any one recomputes the other two (e.g. changing the loan amount on Costs recalculates the deposit % shown on Invest and Journey). Compare is deliberately excluded, since each saved entry there represents a different property. A brand-new install seeds this baseline from the Invest tab's defaults, so every screen agrees with every other one from the very first load rather than each showing an unrelated default price.
 
 ### August 2026 — show your working
 
