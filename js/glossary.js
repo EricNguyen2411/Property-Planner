@@ -31,7 +31,7 @@ const GLOSSARY = {
   negativeGearing: {
     term: "Negative gearing",
     full: "Negative gearing",
-    definition: "When an investment property costs more to hold (loan interest, fees, maintenance) than the rent it earns, the shortfall is a loss you can use to reduce your taxable income — effectively getting some of that loss back as a tax refund. From FY2027-28, this only applies to new-build properties; established properties bought now have losses quarantined instead (see the Invest tab).",
+    definition: "When an investment property costs more to hold (loan interest, fees, maintenance) than the rent it earns, the shortfall is a loss you can use to reduce your taxable income — effectively getting some of that loss back as a tax refund. From FY2027-28, this only applies to new-build properties; established properties bought now have losses quarantined instead (see the investment section on the property tab).",
   },
   yield: {
     term: "Yield",

@@ -135,7 +135,7 @@
   const stateSheetList = document.getElementById("state-sheet-list");
   let activeStateTarget = null; // 'af', 'co', 'in', 'jy' or 'cp'
   let selectedState = { af: "NSW", co: "NSW", in: "NSW", jy: "NSW", cp: "NSW" };
-  const SHARED_STATE_TARGETS = ["af", "co", "in", "jy"]; // cp intentionally excluded — different properties
+  const SHARED_STATE_TARGETS = ["af", "co", "jy"]; // cp intentionally excluded — different properties
 
   function renderStateSheetList() {
     stateSheetList.innerHTML = "";
@@ -174,7 +174,6 @@
   sheetBackdrop.addEventListener("click", closeSheet);
   document.getElementById("af-state-row").addEventListener("click", () => openSheet("af"));
   document.getElementById("co-state-row").addEventListener("click", () => openSheet("co"));
-  document.getElementById("in-state-row").addEventListener("click", () => openSheet("in"));
   document.getElementById("jy-state-row").addEventListener("click", () => openSheet("jy"));
   document.getElementById("cp-state-row").addEventListener("click", () => openSheet("cp"));
 
@@ -188,8 +187,8 @@
   // inside the state picker) across every screen except Compare, which is
   // deliberately independent since each saved entry is a different property.
   // ---------------------------------------------------------------------
-  const SHARED_PRICE_FIELDS = ["in-price", "co-price", "jy-price1"];
-  const SHARED_DEPOSIT_PCT_FIELDS = ["in-deposit-pct", "jy-deposit1"];
+  const SHARED_PRICE_FIELDS = ["co-price", "jy-price1"];
+  const SHARED_DEPOSIT_PCT_FIELDS = ["jy-deposit1"];
   const SHARED_LOAN_FIELDS = ["co-loan", "mg-loan"];
   const SHARED_RATE_FIELDS = ["in-rate", "jy-rate1", "mg-rate", "bp-rate"];
 
@@ -314,13 +313,9 @@
     saveState();
   });
 
-  // Buyer's agent toggles show/hide the fee % row
+  // Buyer's agent toggle shows/hides the fee row
   document.getElementById("co-buyers-agent").addEventListener("change", (e) => {
     document.getElementById("co-buyers-agent-fee-row").classList.toggle("hidden", !e.target.checked);
-    saveState();
-  });
-  document.getElementById("in-buyers-agent").addEventListener("change", (e) => {
-    document.getElementById("in-buyers-agent-fee-row").classList.toggle("hidden", !e.target.checked);
     saveState();
   });
 
@@ -707,9 +702,38 @@
   });
 
   // ---------------------------------------------------------------------
-  // COSTS tab
+  // COSTS tab (merged with investment analysis — see "Is this an investment?" toggle)
   // ---------------------------------------------------------------------
   let lastCostsResult = null;
+  let lastInvestResult = null;
+  let activeScenario = "lower";
+
+  function toggleInvestmentMode() {
+    const isInvestment = document.getElementById("co-is-investment").checked;
+    document.getElementById("co-investment-inputs").classList.toggle("hidden", !isInvestment);
+    document.getElementById("co-noninvestment-inputs").classList.toggle("hidden", isInvestment);
+  }
+  document.getElementById("co-is-investment").addEventListener("change", () => {
+    toggleInvestmentMode();
+    saveState();
+  });
+
+  document.getElementById("in-scenario-toggle").addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    document.querySelectorAll("#in-scenario-toggle button").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeScenario = btn.dataset.val;
+    if (lastInvestResult) renderInvestScenario();
+  });
+
+  document.getElementById("co-capital-toggle").addEventListener("click", () => {
+    const el = document.getElementById("co-breakdown");
+    const btn = document.getElementById("co-capital-toggle");
+    const isHidden = el.classList.contains("hidden");
+    el.classList.toggle("hidden", !isHidden);
+    btn.textContent = isHidden ? "Hide calculation ⌄" : "Show calculation ›";
+  });
 
   document.getElementById("co-calc").addEventListener("click", () => {
     const price = parseNum(document.getElementById("co-price").value);
@@ -721,42 +745,124 @@
     const buyersAgentFee = document.getElementById("co-buyers-agent").checked
       ? getFeeModeDollarAmount({ modeId: "co-buyers-agent-mode", price, pctFieldId: "co-buyers-agent-pct", flatFieldId: "co-buyers-agent-flat" })
       : 0;
+    const renovationCost = parseNum(document.getElementById("in-reno").value);
+    const D = R.DEFAULT_INVESTMENT;
+    const miscFees = parseNum(document.getElementById("in-misc").value) || D.miscFees;
+    const isInvestment = document.getElementById("co-is-investment").checked;
 
     if (price <= 0) {
       alert("Enter a property price first.");
       return;
     }
 
-    const b = C.upfrontCosts({ state, price, isFirstHomeBuyer, loanAmount, lmiWaived, buyersAgentFee });
-    lastCostsResult = { price, loanAmount, state, isFirstHomeBuyer, lmiWaived, availableCash };
+    let totalCashRequired, breakdownRowsHtml, lvrFraction, headline, sub;
 
-    document.getElementById("co-total").textContent = fmt$(b.totalCashRequired);
-    const coLvrBand = R.lvrBand(b.lvr * 100);
-    document.getElementById("co-caption").innerHTML = `on top of your loan <span class="badge-pill ${coLvrBand.tier}">${(b.lvr * 100).toFixed(0)}% LVR — ${coLvrBand.label}</span>`;
-    const coBreakdownRows = [
-      ["Deposit", b.deposit, false],
-      ["Stamp duty", -b.stampDuty, true],
-      ["LMI", -b.lmi, true],
-    ];
-    if (buyersAgentFee > 0) coBreakdownRows.push(["Buyer's agent fee", -buyersAgentFee, true]);
-    document.getElementById("co-breakdown").innerHTML =
-      breakdownRows(coBreakdownRows) +
-      breakdownRowWithCaption("Other purchase costs", -(b.otherCostsTotal - buyersAgentFee), OTHER_PURCHASE_COSTS_CAPTION) +
-      breakdownRows([["Total cash required", b.totalCashRequired, false, true]]);
+    if (isInvestment) {
+      const depositPct = price > 0 ? Math.max(0, (1 - loanAmount / price) * 100) : 20;
+      const result = C.investmentAnalysis({
+        price,
+        depositPct,
+        state,
+        annualRatePct: parseNum(document.getElementById("in-rate").value) || 6.5,
+        loanTermYears: parseNum(document.getElementById("in-term").value) || 30,
+        offsetBalance: parseNum(document.getElementById("in-offset").value),
+        renovationCost,
+        miscFees,
+        buildingInsuranceAnnual: parseNum(document.getElementById("in-bldg-ins").value) || D.buildingInsuranceAnnual,
+        landlordInsuranceAnnual: parseNum(document.getElementById("in-ll-ins").value) || D.landlordInsuranceAnnual,
+        propertyMgmtPct: document.getElementById("in-mgmt-pct").value !== "" ? parseNum(document.getElementById("in-mgmt-pct").value) : D.propertyMgmtPct,
+        leasingFeeAnnual: parseNum(document.getElementById("in-leasing").value) || D.leasingFeeAnnual,
+        vacancyWeeks: document.getElementById("in-vacancy").value !== "" ? parseNum(document.getElementById("in-vacancy").value) : D.vacancyWeeks,
+        landTaxAnnual: parseNum(document.getElementById("in-land-tax").value),
+        stratLeviesMonthly: parseNum(document.getElementById("in-strata").value),
+        maintenanceMonthly: document.getElementById("in-maint").value !== "" ? parseNum(document.getElementById("in-maint").value) : D.maintenanceMonthly,
+        otherExpensesAnnual: document.getElementById("in-other-exp").value !== "" ? parseNum(document.getElementById("in-other-exp").value) : D.otherExpensesAnnual,
+        lowerRentWeekly: parseNum(document.getElementById("in-rent-low").value) || 500,
+        higherRentWeekly: parseNum(document.getElementById("in-rent-high").value) || 550,
+        taxRatePct: document.getElementById("in-tax-rate").value !== "" ? parseNum(document.getElementById("in-tax-rate").value) : D.taxRatePct,
+        depreciationAnnual: parseNum(document.getElementById("in-depreciation").value),
+        growthCagrPct: parseNum(document.getElementById("in-growth").value) || D.growthCagrPct,
+        negativeGearingQuarantined: segVal("in-property-type") === "established",
+        buyersAgentFee,
+      });
+      lastInvestResult = result;
+      totalCashRequired = result.totalCapitalRequired;
+      lvrFraction = result.loanAmount / result.price;
+
+      const capitalRows = [
+        ["Deposit", result.deposit, false],
+        ["Stamp duty", -result.stampDuty, true],
+        ["LMI", -result.lmi, true],
+      ];
+      if (buyersAgentFee > 0) capitalRows.push(["Buyer's agent fee", -buyersAgentFee, true]);
+      if (result.renovationCost > 0) capitalRows.push(["Renovation", -result.renovationCost, true]);
+      let html = breakdownRows(capitalRows);
+      if (result.miscFees > 0) html += breakdownRowWithCaption("Misc fees", -result.miscFees, MISC_FEES_CAPTION);
+      html += breakdownRowWithCaption("Other purchase costs", -(result.otherUpfrontTotal - buyersAgentFee), OTHER_PURCHASE_COSTS_CAPTION);
+      html += breakdownRows([["Total cash required", result.totalCapitalRequired, false, true]]);
+      breakdownRowsHtml = html;
+
+      document.getElementById("in-tag-lower").textContent = `${fmt$(result.lower.rentWeekly)}/wk`;
+      document.getElementById("in-tag-higher").textContent = `${fmt$(result.higher.rentWeekly)}/wk`;
+      document.getElementById("in-growth-breakdown").innerHTML = breakdownRows([
+        ["Purchase price today", result.price, false],
+        [`5-year estimate (${result.growth.cagr}% p.a.)`, result.growth.value5yr, false],
+        [`10-year estimate (${result.growth.cagr}% p.a.)`, result.growth.value10yr, false, true],
+      ]);
+      renderInvestScenario();
+      document.getElementById("co-investment-results").classList.remove("hidden");
+      document.getElementById("co-ongoing-results").classList.add("hidden");
+
+      const s = result[activeScenario];
+      const verdict = s.cashflowBeforeTaxAnnual >= 0 ? "Positively geared" : "Costs you out of pocket";
+      headline = fmt$(totalCashRequired);
+      sub = `${s.yieldPct.toFixed(2)}% yield · ${verdict}`;
+    } else {
+      const b = C.upfrontCosts({ state, price, isFirstHomeBuyer, loanAmount, lmiWaived, buyersAgentFee, renovationCost, miscFees });
+      lastCostsResult = { price, loanAmount, state, isFirstHomeBuyer, lmiWaived, availableCash };
+      totalCashRequired = b.totalCashRequired;
+      lvrFraction = b.lvr;
+
+      const rows = [
+        ["Deposit", b.deposit, false],
+        ["Stamp duty", -b.stampDuty, true],
+        ["LMI", -b.lmi, true],
+      ];
+      if (buyersAgentFee > 0) rows.push(["Buyer's agent fee", -buyersAgentFee, true]);
+      if (renovationCost > 0) rows.push(["Renovation", -renovationCost, true]);
+      let html = breakdownRows(rows);
+      if (miscFees > 0) html += breakdownRowWithCaption("Misc fees", -miscFees, MISC_FEES_CAPTION);
+      html += breakdownRowWithCaption("Other purchase costs", -(b.otherCostsTotal - buyersAgentFee), OTHER_PURCHASE_COSTS_CAPTION);
+      html += breakdownRows([["Total cash required", b.totalCashRequired, false, true]]);
+      breakdownRowsHtml = html;
+
+      document.getElementById("co-investment-results").classList.add("hidden");
+      document.getElementById("co-ongoing-results").classList.remove("hidden");
+      document.getElementById("co-ongoing-breakdown").classList.add("hidden");
+
+      headline = fmt$(totalCashRequired);
+      sub = `Total cash needed for a ${fmt$(price)} property, in ${state}`;
+    }
+
+    document.getElementById("co-total").textContent = fmt$(totalCashRequired);
+    const coLvrBand = R.lvrBand(lvrFraction * 100);
+    document.getElementById("co-caption").innerHTML = `on top of your loan <span class="badge-pill ${coLvrBand.tier}">${(lvrFraction * 100).toFixed(0)}% LVR — ${coLvrBand.label}</span>`;
+    document.getElementById("co-breakdown").innerHTML = breakdownRowsHtml;
 
     const statusEl = document.getElementById("co-status");
     if (availableCash > 0) {
-      const afford = C.canAfford({ propertyPrice: price, maxLoanAmount: loanAmount, availableCash, state, isFirstHomeBuyer, lmiWaived });
-      if (afford.affordable) {
+      const surplus = availableCash - totalCashRequired;
+      const stillAffordable = surplus >= 0;
+      if (stillAffordable) {
         statusEl.className = "status-banner positive";
-        statusEl.textContent = `✅ You can afford this — ${fmt$(afford.surplus)} left over.`;
+        statusEl.textContent = `✅ You can afford this — ${fmt$(surplus)} left over.`;
       } else {
         statusEl.className = "status-banner negative";
-        statusEl.textContent = `❌ You're short by ${fmt$(afford.shortfall)}.`;
+        statusEl.textContent = `❌ You're short by ${fmt$(-surplus)}.`;
       }
       document.getElementById("co-status-wrap").classList.remove("hidden");
-      if (afford.affordable) {
-        renderBufferNote("co-buffer-note", afford.surplus);
+      if (stillAffordable) {
+        renderBufferNote("co-buffer-note", surplus);
       } else {
         document.getElementById("co-buffer-note").innerHTML = "";
       }
@@ -765,11 +871,10 @@
       document.getElementById("co-buffer-note").innerHTML = "";
     }
 
-    document.getElementById("co-ongoing-breakdown").classList.add("hidden");
     document.getElementById("co-results").classList.remove("hidden");
 
     if (!suppressDashboardUpdate) {
-      dashboardSummary.costs = { headline: fmt$(b.totalCashRequired), sub: `Total cash needed for a ${fmt$(price)} property, in ${state}` };
+      dashboardSummary.property = { headline, sub };
       saveDashboardSummary();
       renderHomeCards();
     }
@@ -785,10 +890,8 @@
     const strata = parseNum(document.getElementById("co-ong-strata").value);
     const maintenance = parseNum(document.getElementById("co-ong-maint").value) || R.DEFAULT_ONGOING_MONTHLY.maintenance;
 
-    // Assume a typical mortgage (6% p.a., 30yr, P&I, monthly) unless the
-    // person has already calculated one on the Mortgage tab with this loan.
-    const rateInput = parseNum(document.getElementById("mg-rate").value) || 6;
-    const termInput = parseNum(document.getElementById("mg-term").value) || 30;
+    const rateInput = parseNum(document.getElementById("in-rate").value) || 6;
+    const termInput = parseNum(document.getElementById("in-term").value) || 30;
     const mortgage = C.mortgageSummary({
       loanAmount: lastCostsResult.loanAmount,
       annualRatePct: rateInput,
@@ -808,107 +911,6 @@
       ["Real monthly housing cost", total, false, true],
     ]);
     document.getElementById("co-ongoing-breakdown").classList.remove("hidden");
-  });
-
-  // ---------------------------------------------------------------------
-  // INVEST tab
-  // ---------------------------------------------------------------------
-  let lastInvestResult = null;
-  let activeScenario = "lower";
-
-  document.getElementById("in-scenario-toggle").addEventListener("click", (e) => {
-    const btn = e.target.closest("button");
-    if (!btn) return;
-    document.querySelectorAll("#in-scenario-toggle button").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    activeScenario = btn.dataset.val;
-    if (lastInvestResult) renderInvestScenario();
-  });
-
-  document.getElementById("in-capital-toggle").addEventListener("click", () => {
-    const el = document.getElementById("in-capital-breakdown");
-    const btn = document.getElementById("in-capital-toggle");
-    const isHidden = el.classList.contains("hidden");
-    el.classList.toggle("hidden", !isHidden);
-    btn.textContent = isHidden ? "Hide calculation ⌄" : "Show calculation ›";
-  });
-
-  document.getElementById("in-calc").addEventListener("click", () => {
-    const price = parseNum(document.getElementById("in-price").value);
-    if (price <= 0) {
-      alert("Enter a purchase price first.");
-      return;
-    }
-    const D = R.DEFAULT_INVESTMENT;
-    const investBuyersAgentFee = document.getElementById("in-buyers-agent").checked
-      ? getFeeModeDollarAmount({ modeId: "in-buyers-agent-mode", price, pctFieldId: "in-buyers-agent-pct", flatFieldId: "in-buyers-agent-flat" })
-      : 0;
-    const result = C.investmentAnalysis({
-      price,
-      depositPct: parseNum(document.getElementById("in-deposit-pct").value) || 20,
-      state: selectedState.in,
-      annualRatePct: parseNum(document.getElementById("in-rate").value) || 6.5,
-      loanTermYears: parseNum(document.getElementById("in-term").value) || 30,
-      offsetBalance: parseNum(document.getElementById("in-offset").value),
-      renovationCost: parseNum(document.getElementById("in-reno").value),
-      miscFees: parseNum(document.getElementById("in-misc").value) || D.miscFees,
-      buildingInsuranceAnnual: parseNum(document.getElementById("in-bldg-ins").value) || D.buildingInsuranceAnnual,
-      landlordInsuranceAnnual: parseNum(document.getElementById("in-ll-ins").value) || D.landlordInsuranceAnnual,
-      propertyMgmtPct: document.getElementById("in-mgmt-pct").value !== "" ? parseNum(document.getElementById("in-mgmt-pct").value) : D.propertyMgmtPct,
-      leasingFeeAnnual: parseNum(document.getElementById("in-leasing").value) || D.leasingFeeAnnual,
-      vacancyWeeks: document.getElementById("in-vacancy").value !== "" ? parseNum(document.getElementById("in-vacancy").value) : D.vacancyWeeks,
-      landTaxAnnual: parseNum(document.getElementById("in-land-tax").value),
-      stratLeviesMonthly: parseNum(document.getElementById("in-strata").value),
-      maintenanceMonthly: document.getElementById("in-maint").value !== "" ? parseNum(document.getElementById("in-maint").value) : D.maintenanceMonthly,
-      otherExpensesAnnual: document.getElementById("in-other-exp").value !== "" ? parseNum(document.getElementById("in-other-exp").value) : D.otherExpensesAnnual,
-      lowerRentWeekly: parseNum(document.getElementById("in-rent-low").value) || 500,
-      higherRentWeekly: parseNum(document.getElementById("in-rent-high").value) || 550,
-      taxRatePct: document.getElementById("in-tax-rate").value !== "" ? parseNum(document.getElementById("in-tax-rate").value) : D.taxRatePct,
-      depreciationAnnual: parseNum(document.getElementById("in-depreciation").value),
-      growthCagrPct: parseNum(document.getElementById("in-growth").value) || D.growthCagrPct,
-      negativeGearingQuarantined: segVal("in-property-type") === "established",
-      buyersAgentFee: investBuyersAgentFee,
-    });
-
-    lastInvestResult = result;
-    document.getElementById("in-capital").textContent = fmt$(result.totalCapitalRequired);
-    const inLvrBand = R.lvrBand((result.loanAmount / result.price) * 100);
-    document.getElementById("in-caption").innerHTML = `deposit, stamp duty, LMI, fees &amp; renovation <span class="badge-pill ${inLvrBand.tier}">${((result.loanAmount / result.price) * 100).toFixed(0)}% LVR — ${inLvrBand.label}</span>`;
-
-    const capitalRows = [
-      ["Deposit", result.deposit, false],
-      ["Stamp duty", -result.stampDuty, true],
-      ["LMI", -result.lmi, true],
-    ];
-    if (investBuyersAgentFee > 0) capitalRows.push(["Buyer's agent fee", -investBuyersAgentFee, true]);
-    if (result.renovationCost > 0) capitalRows.push(["Renovation", -result.renovationCost, true]);
-    let capitalHtml = breakdownRows(capitalRows);
-    if (result.miscFees > 0) capitalHtml += breakdownRowWithCaption("Misc fees", -result.miscFees, MISC_FEES_CAPTION);
-    capitalHtml += breakdownRowWithCaption("Other purchase costs", -(result.otherUpfrontTotal - investBuyersAgentFee), OTHER_PURCHASE_COSTS_CAPTION);
-    capitalHtml += breakdownRows([["Total capital required", result.totalCapitalRequired, false, true]]);
-    document.getElementById("in-capital-breakdown").innerHTML = capitalHtml;
-
-    document.getElementById("in-tag-lower").textContent = `${fmt$(result.lower.rentWeekly)}/wk`;
-    document.getElementById("in-tag-higher").textContent = `${fmt$(result.higher.rentWeekly)}/wk`;
-
-    document.getElementById("in-growth-breakdown").innerHTML = breakdownRows([
-      ["Purchase price today", result.price, false],
-      [`5-year estimate (${result.growth.cagr}% p.a.)`, result.growth.value5yr, false],
-      [`10-year estimate (${result.growth.cagr}% p.a.)`, result.growth.value10yr, false, true],
-    ]);
-
-    renderInvestScenario();
-    document.getElementById("in-results").classList.remove("hidden");
-
-    if (!suppressDashboardUpdate) {
-      const s = result[activeScenario];
-      const verdict = s.cashflowBeforeTaxAnnual >= 0 ? "Positively geared" : "Costs you out of pocket";
-      dashboardSummary.invest = { headline: `${s.yieldPct.toFixed(2)}% yield`, sub: `${verdict} · ${fmt$signed(s.cashflowBeforeTaxWeekly)}/wk before tax` };
-      saveDashboardSummary();
-      renderHomeCards();
-    }
-
-    saveState();
   });
 
   function renderInvestScenario() {
@@ -957,15 +959,17 @@
   }
 
   // ---------------------------------------------------------------------
-  // EXIT ESTIMATE (inside Invest tab) — capital gains tax on eventual sale
+  // EXIT ESTIMATE (inside the merged Property tab, investment mode) —
+  // capital gains tax on eventual sale
   // ---------------------------------------------------------------------
   document.getElementById("ex-calc").addEventListener("click", () => {
     if (!lastInvestResult) {
       alert("Calculate the investment cashflow above first.");
       return;
     }
-    const price = parseNum(document.getElementById("in-price").value);
-    const depositPct = parseNum(document.getElementById("in-deposit-pct").value) || 20;
+    const price = parseNum(document.getElementById("co-price").value);
+    const loanAmount = parseNum(document.getElementById("co-loan").value);
+    const depositPct = price > 0 ? Math.max(0, (1 - loanAmount / price) * 100) : 20;
     const annualRatePct = parseNum(document.getElementById("in-rate").value) || 6.5;
     const loanTermYears = parseNum(document.getElementById("in-term").value) || 30;
     const isNewBuild = segVal("in-property-type") === "new";
@@ -1269,11 +1273,11 @@
   // Persistence (local only — this is a personal calculator, no sync)
   // ---------------------------------------------------------------------
   const INVEST_FIELD_IDS = [
-    "in-price", "in-deposit-pct", "in-rate", "in-term", "in-offset",
+    "in-rate", "in-term", "in-offset",
     "in-reno", "in-misc", "in-bldg-ins", "in-ll-ins", "in-mgmt-pct",
     "in-leasing", "in-vacancy", "in-land-tax", "in-strata", "in-maint",
     "in-other-exp", "in-rent-low", "in-rent-high", "in-tax-rate",
-    "in-depreciation", "in-growth", "in-buyers-agent-pct", "in-buyers-agent-flat",
+    "in-depreciation", "in-growth",
   ];
   const BP_FIELD_IDS = [
     "bp-salary", "bp-other-income", "bp-rent", "bp-rent-shade", "bp-dependents",
@@ -1329,12 +1333,10 @@
           lmiWaived: document.getElementById("co-lmi-waived").checked,
           buyersAgent: document.getElementById("co-buyers-agent").checked,
           buyersAgentMode: segVal("co-buyers-agent-mode"),
+          isInvestment: document.getElementById("co-is-investment").checked,
         },
         in: {
           ...invVals,
-          state: selectedState.in,
-          buyersAgent: document.getElementById("in-buyers-agent").checked,
-          buyersAgentMode: segVal("in-buyers-agent-mode"),
           propertyType: segVal("in-property-type"),
         },
         jy: { ...jyVals, state: selectedState.jy },
@@ -1395,17 +1397,10 @@
         const coFlat = s.co.buyersAgentMode === "flat";
         document.getElementById("co-buyers-agent-pct-row").classList.toggle("hidden", coFlat);
         document.getElementById("co-buyers-agent-flat-row").classList.toggle("hidden", !coFlat);
+        document.getElementById("co-is-investment").checked = !!s.co.isInvestment;
       }
       if (s.in) {
         INVEST_FIELD_IDS.forEach((id) => setIfPresent(id, s.in[id]));
-        selectedState.in = s.in.state || "NSW";
-        document.getElementById("in-state-value").innerHTML = `${selectedState.in} <span class="chevron">›</span>`;
-        document.getElementById("in-buyers-agent").checked = !!s.in.buyersAgent;
-        document.getElementById("in-buyers-agent-fee-row").classList.toggle("hidden", !s.in.buyersAgent);
-        setSeg("in-buyers-agent-mode", s.in.buyersAgentMode);
-        const inFlat = s.in.buyersAgentMode === "flat";
-        document.getElementById("in-buyers-agent-pct-row").classList.toggle("hidden", inFlat);
-        document.getElementById("in-buyers-agent-flat-row").classList.toggle("hidden", !inFlat);
         setSeg("in-property-type", s.in.propertyType);
       }
       if (s.jy) {
@@ -1467,13 +1462,8 @@
   // ---------------------------------------------------------------------
   document.getElementById("af-guided-continue").addEventListener("click", () => {
     const price = parseNum(document.getElementById("af-max-price").textContent);
-    document.getElementById("in-price").value = price.toLocaleString("en-AU");
-    onSharedPriceInput("in-price");
-    switchToScreen("invest");
-    document.getElementById("in-calc").click();
-  });
-
-  document.getElementById("in-guided-continue").addEventListener("click", () => {
+    document.getElementById("co-price").value = price.toLocaleString("en-AU");
+    onSharedPriceInput("co-price");
     switchToScreen("costs");
     document.getElementById("co-calc").click();
   });
@@ -1492,7 +1482,7 @@
   // far, doubling as the starting point (shows "start here" prompts) and
   // the finishing point (shows every headline number in one place).
   // ---------------------------------------------------------------------
-  let dashboardSummary = { afford: null, invest: null, costs: null, journey: null };
+  let dashboardSummary = { afford: null, property: null, journey: null };
   let suppressDashboardUpdate = true; // true only during the very first auto-run on load
 
   function saveDashboardSummary() {
@@ -1507,8 +1497,7 @@
 
   const STORY_STEPS = [
     { key: "afford", screen: "afford", title: "What can you afford?", desc: "Your borrowing power and maximum purchase price." },
-    { key: "invest", screen: "invest", title: "Does it stack up?", desc: "Yield and cashflow before and after tax." },
-    { key: "costs", screen: "costs", title: "The real cash needed", desc: "Full upfront cost breakdown and affordability check." },
+    { key: "property", screen: "costs", title: "This property", desc: "Full cost breakdown — plus yield and cashflow if it's an investment." },
     { key: "journey", screen: "journey", title: "The long game", desc: "When you could buy a home to live in, afterward." },
   ];
 
@@ -1562,34 +1551,47 @@
   }
 
   // Live dollar readouts for every deposit % field
-  wireLiveDollarReadout("in-price", "in-deposit-pct", "in-deposit-dollar");
   wireLiveDollarReadout("jy-price1", "jy-deposit1", "jy-deposit-dollar");
   wireLiveDollarReadout("cp-price", "cp-deposit-pct", "cp-deposit-dollar");
+
+  // Shows the deposit $ and % implied by price - loan, under the loan field
+  function updateCoDepositImplied() {
+    const price = parseNum(document.getElementById("co-price").value);
+    const loan = parseNum(document.getElementById("co-loan").value);
+    const el = document.getElementById("co-deposit-implied");
+    if (!el) return;
+    if (price > 0 && loan >= 0 && loan <= price) {
+      const deposit = price - loan;
+      el.textContent = `Deposit: ${fmt$(deposit)} (${((deposit / price) * 100).toFixed(0)}%)`;
+    } else {
+      el.textContent = "";
+    }
+  }
+  document.getElementById("co-price").addEventListener("input", updateCoDepositImplied);
+  document.getElementById("co-loan").addEventListener("input", updateCoDepositImplied);
+  updateCoDepositImplied();
 
   // Buyer's agent fee mode toggles (% of price vs flat $)
   wireFeeModeToggle({
     modeId: "co-buyers-agent-mode", priceFieldId: "co-price", pctFieldId: "co-buyers-agent-pct",
     pctRowId: "co-buyers-agent-pct-row", flatRowId: "co-buyers-agent-flat-row", dollarLabelId: "co-buyers-agent-dollar",
   });
-  wireFeeModeToggle({
-    modeId: "in-buyers-agent-mode", priceFieldId: "in-price", pctFieldId: "in-buyers-agent-pct",
-    pctRowId: "in-buyers-agent-pct-row", flatRowId: "in-buyers-agent-flat-row", dollarLabelId: "in-buyers-agent-dollar",
-  });
 
   restoreState();
   loadDashboardSummary();
   renderHomeCards();
+  toggleInvestmentMode();
 
   // Establish a coherent baseline across every screen before the first
   // auto-run: if this browser already has a shared-property baseline
   // saved, push it into every field (so a reload doesn't reintroduce a
-  // mismatch); otherwise seed the baseline from the Invest tab's current
+  // mismatch); otherwise seed the baseline from the Property tab's current
   // values, so price/deposit/loan/rate agree everywhere from the very
   // first load rather than each tab showing its own unrelated default.
   loadSharedProperty();
   if (sharedProperty.price == null && sharedProperty.loanAmount == null) {
-    onSharedPriceInput("in-price");
-    onSharedDepositPctInput("in-deposit-pct");
+    onSharedPriceInput("co-price");
+    onSharedLoanInput("co-loan");
     onSharedRateInput("in-rate");
   } else {
     propagateShared(null);
@@ -1610,7 +1612,6 @@
   document.getElementById("af-calc").click();
   document.getElementById("mg-calc").click();
   document.getElementById("co-calc").click();
-  document.getElementById("in-calc").click();
   document.getElementById("jy-calc").click();
   suppressDashboardUpdate = false;
 

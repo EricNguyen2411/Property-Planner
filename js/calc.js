@@ -109,13 +109,15 @@ function upfrontCosts({
   lmiWaived,
   otherCostsOverrides = {},
   buyersAgentFee = 0,
+  renovationCost = 0,
+  miscFees = 0,
 }) {
   const duty = RatesModule.stampDuty(state, price, isFirstHomeBuyer);
   const lmi = RatesModule.estimateLMI(loanAmount, price, lmiWaived);
   const otherCosts = { ...RatesModule.DEFAULT_UPFRONT_COSTS, ...otherCostsOverrides };
   const otherCostsTotal = Object.values(otherCosts).reduce((a, b) => a + Number(b || 0), 0) + buyersAgentFee;
   const deposit = Math.max(price - loanAmount, 0);
-  const totalCashRequired = deposit + duty + otherCostsTotal + lmi;
+  const totalCashRequired = deposit + duty + otherCostsTotal + lmi + renovationCost + miscFees;
 
   return {
     price,
@@ -125,6 +127,8 @@ function upfrontCosts({
     lmi,
     otherCosts,
     buyersAgentFee,
+    renovationCost,
+    miscFees,
     otherCostsTotal,
     totalCashRequired,
     lvr: loanAmount / price,

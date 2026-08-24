@@ -4,15 +4,14 @@ A PWA that works backwards from your actual finances — maximum loan and saving
 
 ## Navigation
 
-The app opens to **Home** — a dashboard of 4 steps, in order: Afford → Invest → Costs → Journey. Each card shows either "start this step" or, once calculated, the headline result right there on the card. It's both your starting point and your finishing point — the same screen that nudges you through step one shows your full picture once you're done. A "Continue →" button at the end of each step carries your numbers into the next one automatically, so you never retype the same price twice.
+The app opens to **Home** — a dashboard of 3 steps, in order: Afford → This Property → Journey. Each card shows either "start this step" or, once calculated, the headline result right there on the card. It's both your starting point and your finishing point — the same screen that nudges you through step one shows your full picture once you're done. A "Continue →" button at the end of each step carries your numbers into the next one automatically, and price/deposit/loan amount/interest rate/state now stay live-synced across every screen that uses them — edit any one, anywhere, and the others update immediately.
 
 **More** (the second tab) holds the tools you'll dip into occasionally rather than step through in order: the mortgage calculator, property comparison, and the rates/glossary/buying-guide reference.
 
 - **Afford** — enter your max loan + savings, get your real maximum purchase price. Includes an optional "estimate my borrowing power from income" panel: salary, other income, rental income (if buying an investment), HECS/HELP, dependents, living expenses and existing debts, run through real FY2026-27 tax brackets and the APRA 3% serviceability buffer to estimate your maximum loan
-- **Invest** — investment property cashflow: yield, upfront capital required, and cashflow before/after tax across a lower- and higher-rent scenario, with 5/10-year growth projections and an exit/sale (capital gains tax) estimate. Includes a New Build / Established toggle reflecting the 2026 Budget's negative gearing reform (established properties bought now lose the ability to offset losses against salary from FY2027-28 — new builds are exempt)
-- **Costs** — full upfront cost breakdown for a specific property, plus a "can I afford this" check
+- **This Property** — full upfront cost breakdown for a specific property (deposit, stamp duty, LMI, buyer's agent fee, renovation, misc fees) plus a "can I afford this" check, always shown. Switch on **"Is this an investment?"** to add rental yield, cashflow before/after tax across a lower- and higher-rent scenario, 5/10-year growth projections, and an exit/sale (capital gains tax) estimate — including a New Build / Established toggle reflecting the 2026 Budget's negative gearing reform (established properties bought now lose the ability to offset losses against salary from FY2027-28 — new builds are exempt). The upfront-cost total is identical whichever mode you're in — investment mode only adds the income/tax analysis on top, it doesn't change how the base cost is calculated
 - **Journey** — for buying an investment property now and a home to live in later: models Property 1's equity growth, how much of it you could release to fund Property 2's deposit, warns about cross-collateralisation, and flags the state-specific impact on first-home-buyer stamp duty relief and the federal First Home Guarantee
-- Afford, Costs and Journey all flag it if what you'd have left over falls short of a commonly-recommended emergency buffer
+- Afford, This Property and Journey all flag it if what you'd have left over falls short of a commonly-recommended emergency buffer
 - **Mortgage** (under More) — repayments, total interest, payoff date, extra repayments, offset, and a rate stress test showing your repayment from -1% to +3% (the buffer banks assess you at)
 - **Compare** (under More) — save a few real properties side by side (price, deposit, total cash required, yield, cashflow) with a "best cashflow" highlight
 - **Rates** (under More) — every stamp duty / LMI / fee assumption the app uses, editable, with a last-verified date, a step-by-step buying process guide, and a full glossary of every term used in the app
@@ -62,7 +61,7 @@ The app then runs offline, with its own icon, no browser chrome.
 Whenever you edit any file, bump the cache version in `service-worker.js`:
 
 ```js
-const CACHE_VERSION = "property-planner-v20"; // increment this
+const CACHE_VERSION = "property-planner-v21"; // increment this
 ```
 
 Then commit and push — GitHub Pages redeploys automatically within a minute or two. On your phone, **fully close** the app (not just background it) and reopen it to pick up the update; the service worker deliberately waits for a clean restart rather than hot-swapping mid-session.
@@ -112,6 +111,10 @@ Property price, deposit %, loan amount, interest rate and state/territory now st
 
 The Invest tab's "Total capital required" now has a "Show calculation" toggle underneath it, revealing the exact itemised sum (deposit + stamp duty + LMI + buyer's agent fee + renovation + misc fees + other costs = total) — collapsed by default to keep the hero number clean, one tap away when you want to check the arithmetic yourself. "Other purchase costs" (everywhere it appears — Afford, Costs, Invest, Journey) and "Misc fees" (Invest) now both show a small caption explaining what's actually in them, instead of being an opaque single number.
 
+### August 2026 — Invest and Costs merged
+
+These two tabs computed the same upfront costs slightly differently (Invest additionally counted renovation and misc fees, Costs didn't), which meant identical inputs could show two different totals — confusing, and no longer defensible once price/loan/deposit started syncing live between them. They're now one screen, "This Property," with an "Is this an investment?" toggle: off behaves like the old Costs tab, on reveals the rental/yield/tax/CGT sections underneath the exact same cost breakdown. The upfront-cost formula is now identical in both modes — investment mode only adds analysis on top, it never changes the base total. Home's dashboard and the Continue-button chain were both updated to match (3 steps instead of 4: Afford → This Property → Journey).
+
 ## Investment cashflow assumptions
 
 The Invest tab separates the tax-deductible interest portion of a loan repayment from the non-deductible principal portion when estimating your after-tax cashflow (a common simplification error in flat spreadsheets is to treat the whole P&I repayment as deductible, which overstates any negative-gearing refund). It doesn't model entity structure (joint ownership, trusts, company ownership) — enter your own effective marginal tax rate instead. It also reflects the 2026 Budget's negative-gearing reform: an established property bought now can't offset a rental loss against your salary from FY2027-28 onward (new builds remain exempt) — select the right property type on the Invest tab for an accurate after-tax figure. This isn't tax advice; check your numbers with an accountant before relying on them.
@@ -130,7 +133,7 @@ The Journey tab assumes you can refinance Property 1 up to your chosen LVR to re
 
 ```
 property-planner/
-├── index.html            # app shell, all 4 screens
+├── index.html            # app shell, all screens (Home, Afford, This Property, Journey, Mortgage, Compare, Rates, More)
 ├── manifest.json          # PWA manifest
 ├── service-worker.js      # offline cache, safe update pattern
 ├── css/
