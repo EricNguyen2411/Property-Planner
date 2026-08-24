@@ -361,9 +361,25 @@
         </div>
         <label class="switch"><input type="checkbox" id="co-buyers-agent"><span class="switch-track"></span></label>
       </div>
-      <div class="row hidden" id="co-buyers-agent-fee-row">
-        <span class="row-label">Fee</span>
-        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="co-buyers-agent-pct" placeholder="2" value="2" style="text-align:right"><span>% of price</span></div>
+      <div class="hidden" id="co-buyers-agent-fee-row">
+        <div class="row">
+          <span class="row-label">Fee type</span>
+          <div class="segmented" style="width:170px" id="co-buyers-agent-mode">
+            <button class="active" data-val="pct">% of price</button>
+            <button data-val="flat">Flat $</button>
+          </div>
+        </div>
+        <div class="row" id="co-buyers-agent-pct-row">
+          <div>
+            <div class="row-label">Fee</div>
+            <div class="row-sublabel" id="co-buyers-agent-dollar"></div>
+          </div>
+          <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="co-buyers-agent-pct" placeholder="2" value="2" style="text-align:right"><span>%</span></div>
+        </div>
+        <div class="row hidden" id="co-buyers-agent-flat-row">
+          <span class="row-label">Fee</span>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="co-buyers-agent-flat" placeholder="15,000"></div>
+        </div>
       </div>
     </div>
 
@@ -421,7 +437,10 @@
         <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-price" placeholder="680,000" value="680,000"></div>
       </div>
       <div class="row">
-        <span class="row-label">Deposit</span>
+        <div>
+          <div class="row-label">Deposit</div>
+          <div class="row-sublabel" id="in-deposit-dollar"></div>
+        </div>
         <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-deposit-pct" placeholder="12" style="text-align:right" value="12"><span>%</span></div>
       </div>
       <div class="row tappable" id="in-state-row">
@@ -461,9 +480,25 @@
         </div>
         <label class="switch"><input type="checkbox" id="in-buyers-agent"><span class="switch-track"></span></label>
       </div>
-      <div class="row hidden" id="in-buyers-agent-fee-row">
-        <span class="row-label">Fee</span>
-        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-buyers-agent-pct" placeholder="2" value="2" style="text-align:right"><span>% of price</span></div>
+      <div class="hidden" id="in-buyers-agent-fee-row">
+        <div class="row">
+          <span class="row-label">Fee type</span>
+          <div class="segmented" style="width:170px" id="in-buyers-agent-mode">
+            <button class="active" data-val="pct">% of price</button>
+            <button data-val="flat">Flat $</button>
+          </div>
+        </div>
+        <div class="row" id="in-buyers-agent-pct-row">
+          <div>
+            <div class="row-label">Fee</div>
+            <div class="row-sublabel" id="in-buyers-agent-dollar"></div>
+          </div>
+          <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-buyers-agent-pct" placeholder="2" value="2" style="text-align:right"><span>%</span></div>
+        </div>
+        <div class="row hidden" id="in-buyers-agent-flat-row">
+          <span class="row-label">Fee</span>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-buyers-agent-flat" placeholder="15,000"></div>
+        </div>
       </div>
       <div class="row">
         <div class="row-sublabel">Stamp duty, legal fees, B&amp;P inspection and LMI are calculated automatically using your Rates tab defaults.</div>
@@ -658,7 +693,10 @@
         <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="jy-price1" placeholder="550,000" value="550,000"></div>
       </div>
       <div class="row">
-        <span class="row-label">Deposit</span>
+        <div>
+          <div class="row-label">Deposit</div>
+          <div class="row-sublabel" id="jy-deposit-dollar"></div>
+        </div>
         <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="jy-deposit1" placeholder="20" value="20" style="text-align:right"><span>%</span></div>
       </div>
       <div class="row">
@@ -769,7 +807,10 @@
         <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="cp-price" placeholder="650,000"></div>
       </div>
       <div class="row">
-        <span class="row-label">Deposit</span>
+        <div>
+          <div class="row-label">Deposit</div>
+          <div class="row-sublabel" id="cp-deposit-dollar"></div>
+        </div>
         <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="cp-deposit-pct" placeholder="20" value="20" style="text-align:right"><span>%</span></div>
       </div>
       <div class="row">

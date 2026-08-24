@@ -329,6 +329,49 @@
   // Compares what's left over in cash against a commonly-cited emergency
   // buffer starting point, and renders a note into the given container if
   // it falls short — separate from (and in addition to) the main status banner.
+  // Live "≈ $X" readout under a percentage field, so entering e.g. 12%
+  // deposit immediately shows what that actually means in dollars against
+  // the current price — updates as either field is typed into, no need to
+  // press Calculate first.
+  function wireLiveDollarReadout(priceFieldId, pctFieldId, labelElId) {
+    const priceEl = document.getElementById(priceFieldId);
+    const pctEl = document.getElementById(pctFieldId);
+    const labelEl = document.getElementById(labelElId);
+    if (!priceEl || !pctEl || !labelEl) return;
+    function update() {
+      const price = parseNum(priceEl.value);
+      const pct = parseNum(pctEl.value);
+      labelEl.textContent = price > 0 && pct >= 0 ? `≈ ${fmt$((price * pct) / 100)}` : "";
+    }
+    priceEl.addEventListener("input", update);
+    pctEl.addEventListener("input", update);
+    update();
+  }
+
+  // Wires a "% of price" / "Flat $" mode toggle for a fee: shows/hides the
+  // right input and keeps the live dollar readout in sync when in % mode.
+  function wireFeeModeToggle({ modeId, priceFieldId, pctFieldId, pctRowId, flatRowId, dollarLabelId }) {
+    const modeEl = document.getElementById(modeId);
+    if (!modeEl) return;
+    modeEl.addEventListener("click", (e) => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      const isFlat = btn.dataset.val === "flat";
+      document.getElementById(pctRowId).classList.toggle("hidden", isFlat);
+      document.getElementById(flatRowId).classList.toggle("hidden", !isFlat);
+    });
+    wireLiveDollarReadout(priceFieldId, pctFieldId, dollarLabelId);
+  }
+
+  function getFeeModeDollarAmount({ modeId, price, pctFieldId, flatFieldId }) {
+    const mode = segVal(modeId);
+    if (mode === "flat") return parseNum(document.getElementById(flatFieldId).value);
+    return (price * (parseNum(document.getElementById(pctFieldId).value) || 0)) / 100;
+  }
+
+  // Compares what's left over in cash against a commonly-cited emergency
+  // buffer starting point, and renders a note into the given container if
+  // it falls short — separate from (and in addition to) the main status banner.
   function renderBufferNote(containerId, remainingCash) {
     const el = document.getElementById(containerId);
     if (!el) return;
@@ -558,7 +601,7 @@
     const isFirstHomeBuyer = document.getElementById("co-fhb").checked;
     const lmiWaived = isFirstHomeBuyer && document.getElementById("co-lmi-waived").checked;
     const buyersAgentFee = document.getElementById("co-buyers-agent").checked
-      ? price * (parseNum(document.getElementById("co-buyers-agent-pct").value) || 2) / 100
+      ? getFeeModeDollarAmount({ modeId: "co-buyers-agent-mode", price, pctFieldId: "co-buyers-agent-pct", flatFieldId: "co-buyers-agent-flat" })
       : 0;
 
     if (price <= 0) {
@@ -695,7 +738,7 @@
       growthCagrPct: parseNum(document.getElementById("in-growth").value) || D.growthCagrPct,
       negativeGearingQuarantined: segVal("in-property-type") === "established",
       buyersAgentFee: document.getElementById("in-buyers-agent").checked
-        ? price * (parseNum(document.getElementById("in-buyers-agent-pct").value) || 2) / 100
+        ? getFeeModeDollarAmount({ modeId: "in-buyers-agent-mode", price, pctFieldId: "in-buyers-agent-pct", flatFieldId: "in-buyers-agent-flat" })
         : 0,
     });
 
@@ -1323,6 +1366,21 @@
       ? "Here's your full picture. Tap any card to review or update it."
       : "Work through these in order — each one builds on the last. Tap any card to start or review it.";
   }
+
+  // Live dollar readouts for every deposit % field
+  wireLiveDollarReadout("in-price", "in-deposit-pct", "in-deposit-dollar");
+  wireLiveDollarReadout("jy-price1", "jy-deposit1", "jy-deposit-dollar");
+  wireLiveDollarReadout("cp-price", "cp-deposit-pct", "cp-deposit-dollar");
+
+  // Buyer's agent fee mode toggles (% of price vs flat $)
+  wireFeeModeToggle({
+    modeId: "co-buyers-agent-mode", priceFieldId: "co-price", pctFieldId: "co-buyers-agent-pct",
+    pctRowId: "co-buyers-agent-pct-row", flatRowId: "co-buyers-agent-flat-row", dollarLabelId: "co-buyers-agent-dollar",
+  });
+  wireFeeModeToggle({
+    modeId: "in-buyers-agent-mode", priceFieldId: "in-price", pctFieldId: "in-buyers-agent-pct",
+    pctRowId: "in-buyers-agent-pct-row", flatRowId: "in-buyers-agent-flat-row", dollarLabelId: "in-buyers-agent-dollar",
+  });
 
   restoreState();
   loadDashboardSummary();
