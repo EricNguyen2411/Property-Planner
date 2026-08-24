@@ -108,11 +108,12 @@ function upfrontCosts({
   loanAmount,
   lmiWaived,
   otherCostsOverrides = {},
+  buyersAgentFee = 0,
 }) {
   const duty = RatesModule.stampDuty(state, price, isFirstHomeBuyer);
   const lmi = RatesModule.estimateLMI(loanAmount, price, lmiWaived);
   const otherCosts = { ...RatesModule.DEFAULT_UPFRONT_COSTS, ...otherCostsOverrides };
-  const otherCostsTotal = Object.values(otherCosts).reduce((a, b) => a + Number(b || 0), 0);
+  const otherCostsTotal = Object.values(otherCosts).reduce((a, b) => a + Number(b || 0), 0) + buyersAgentFee;
   const deposit = Math.max(price - loanAmount, 0);
   const totalCashRequired = deposit + duty + otherCostsTotal + lmi;
 
@@ -123,6 +124,7 @@ function upfrontCosts({
     stampDuty: duty,
     lmi,
     otherCosts,
+    buyersAgentFee,
     otherCostsTotal,
     totalCashRequired,
     lvr: loanAmount / price,
@@ -286,13 +288,14 @@ function investmentAnalysis({
   growthCagrPct,
   negativeGearingQuarantined = false, // true for an established property bought now: from FY2027-28,
                                         // losses can't offset salary — see the 2026 Budget reform
+  buyersAgentFee = 0,
 }) {
   const deposit = price * (depositPct / 100);
   const loanAmount = price - deposit;
   const duty = RatesModule.stampDuty(state, price, false); // investment: no FHB concession
   const lmi = RatesModule.estimateLMI(loanAmount, price, false);
   const otherUpfront = { ...RatesModule.DEFAULT_UPFRONT_COSTS, ...otherUpfrontOverrides };
-  const otherUpfrontTotal = Object.values(otherUpfront).reduce((a, b) => a + Number(b || 0), 0);
+  const otherUpfrontTotal = Object.values(otherUpfront).reduce((a, b) => a + Number(b || 0), 0) + buyersAgentFee;
   const totalCapitalRequired = deposit + duty + lmi + otherUpfrontTotal + renovationCost + miscFees;
 
   const mortgage = mortgageSummary({

@@ -208,6 +208,16 @@
     saveState();
   });
 
+  // Buyer's agent toggles show/hide the fee % row
+  document.getElementById("co-buyers-agent").addEventListener("change", (e) => {
+    document.getElementById("co-buyers-agent-fee-row").classList.toggle("hidden", !e.target.checked);
+    saveState();
+  });
+  document.getElementById("in-buyers-agent").addEventListener("change", (e) => {
+    document.getElementById("in-buyers-agent-fee-row").classList.toggle("hidden", !e.target.checked);
+    saveState();
+  });
+
   // ---------------------------------------------------------------------
   // Ledger bar renderer (signature element)
   // loanAmount + cashUsed = price, with a cost "bite" notch between them
@@ -508,23 +518,28 @@
     const state = selectedState.co;
     const isFirstHomeBuyer = document.getElementById("co-fhb").checked;
     const lmiWaived = isFirstHomeBuyer && document.getElementById("co-lmi-waived").checked;
+    const buyersAgentFee = document.getElementById("co-buyers-agent").checked
+      ? price * (parseNum(document.getElementById("co-buyers-agent-pct").value) || 2) / 100
+      : 0;
 
     if (price <= 0) {
       alert("Enter a property price first.");
       return;
     }
 
-    const b = C.upfrontCosts({ state, price, isFirstHomeBuyer, loanAmount, lmiWaived });
+    const b = C.upfrontCosts({ state, price, isFirstHomeBuyer, loanAmount, lmiWaived, buyersAgentFee });
     lastCostsResult = { price, loanAmount, state, isFirstHomeBuyer, lmiWaived, availableCash };
 
     document.getElementById("co-total").textContent = fmt$(b.totalCashRequired);
-    document.getElementById("co-breakdown").innerHTML = breakdownRows([
+    const coBreakdownRows = [
       ["Deposit", b.deposit, false],
       ["Stamp duty", -b.stampDuty, true],
       ["LMI", -b.lmi, true],
-      ["Other purchase costs", -b.otherCostsTotal, true],
-      ["Total cash required", b.totalCashRequired, false, true],
-    ]);
+    ];
+    if (buyersAgentFee > 0) coBreakdownRows.push(["Buyer's agent fee", -buyersAgentFee, true]);
+    coBreakdownRows.push(["Other purchase costs", -(b.otherCostsTotal - buyersAgentFee), true]);
+    coBreakdownRows.push(["Total cash required", b.totalCashRequired, false, true]);
+    document.getElementById("co-breakdown").innerHTML = breakdownRows(coBreakdownRows);
 
     const statusEl = document.getElementById("co-status");
     if (availableCash > 0) {
@@ -638,6 +653,9 @@
       depreciationAnnual: parseNum(document.getElementById("in-depreciation").value),
       growthCagrPct: parseNum(document.getElementById("in-growth").value) || D.growthCagrPct,
       negativeGearingQuarantined: segVal("in-property-type") === "established",
+      buyersAgentFee: document.getElementById("in-buyers-agent").checked
+        ? price * (parseNum(document.getElementById("in-buyers-agent-pct").value) || 2) / 100
+        : 0,
     });
 
     lastInvestResult = result;
@@ -669,9 +687,10 @@
     const s = lastInvestResult[activeScenario];
     const r = lastInvestResult;
 
+    const band = R.yieldBand(s.yieldPct);
     document.getElementById("in-yield-breakdown").innerHTML =
       breakdownRows([["Gross rent (annual)", s.grossRentAnnual, false]]) +
-      `<div class="breakdown-row total"><span>Yield on purchase</span><span class="amount tabular">${s.yieldPct.toFixed(2)}%</span></div>`;
+      `<div class="breakdown-row total"><span class="term-link" data-term="yield">Yield on purchase</span><span class="amount tabular">${s.yieldPct.toFixed(2)}% <span class="yield-badge ${band.tier}">${band.label}</span></span></div>`;
 
     document.getElementById("in-before-tax-breakdown").innerHTML = breakdownRows([
       ["Gross rent", s.grossRentAnnual, false],
@@ -887,6 +906,7 @@
         const s = result.lower;
         const isBest = s.cashflowBeforeTaxWeekly === bestCashflow && compareList.length > 1;
         const cfCls = s.cashflowBeforeTaxWeekly >= 0 ? "positive" : "negative";
+        const yieldBand = R.yieldBand(s.yieldPct);
         return `
           <div class="compare-card ${isBest ? "best" : ""}">
             <div class="compare-card-header">
@@ -900,7 +920,7 @@
             <div class="compare-grid">
               <div><div class="compare-stat-label">Deposit</div><div class="compare-stat-value">${fmt$(result.deposit)}</div></div>
               <div><div class="compare-stat-label">Total cash required</div><div class="compare-stat-value">${fmt$(result.totalCapitalRequired)}</div></div>
-              <div><div class="compare-stat-label">Yield</div><div class="compare-stat-value">${s.yieldPct.toFixed(2)}%</div></div>
+              <div><div class="compare-stat-label">Yield</div><div class="compare-stat-value ${yieldBand.tier}">${s.yieldPct.toFixed(2)}%</div></div>
               <div><div class="compare-stat-label">Cashflow before tax</div><div class="compare-stat-value ${cfCls}">${fmt$signed(s.cashflowBeforeTaxWeekly)}/wk</div></div>
             </div>
           </div>`;
@@ -954,6 +974,7 @@
       mortgageRegistrationFee: "Mortgage registration",
       transferRegistrationFee: "Transfer registration",
       titleSearchAndOther: "Title search & other",
+      movingCosts: "Moving costs",
     };
     const upfrontEl = document.getElementById("rates-upfront");
     upfrontEl.innerHTML = Object.entries(R.DEFAULT_UPFRONT_COSTS)
@@ -993,7 +1014,8 @@
         const display = suffix === "%" || suffix === "wks" ? val : val.toLocaleString("en-AU");
         return `<div class="row"><span class="row-label">${label}</span><span class="row-value">${suffix === "" ? "$" + display : display + (suffix ? " " + suffix : "")}</span></div>`;
       })
-      .join("");
+      .join("") +
+      `<div class="row"><span class="row-label"><span class="term-link" data-term="buyersAgent">Buyer's agent fee</span></span><span class="row-value">${R.DEFAULT_BUYERS_AGENT_PCT}% (if used)</span></div>`;
 
     const glossaryEl = document.getElementById("rates-glossary");
     glossaryEl.innerHTML = Object.entries(window.PropGlossary)

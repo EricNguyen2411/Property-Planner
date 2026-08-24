@@ -353,6 +353,17 @@
         </div>
         <label class="switch"><input type="checkbox" id="co-lmi-waived"><span class="switch-track"></span></label>
       </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Using a <span class="term-link" data-term="buyersAgent">buyer's agent</span></div>
+          <div class="row-sublabel">Typically 1.5-3% of price, or a flat fee</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="co-buyers-agent"><span class="switch-track"></span></label>
+      </div>
+      <div class="row hidden" id="co-buyers-agent-fee-row">
+        <span class="row-label">Fee</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="co-buyers-agent-pct" placeholder="2" value="2" style="text-align:right"><span>% of price</span></div>
+      </div>
     </div>
 
     <button class="btn-primary" id="co-calc">Calculate total cost</button>
@@ -441,6 +452,17 @@
       <div class="row">
         <span class="row-label">Misc fees</span>
         <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-misc" placeholder="1,000" value="1,000"></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Using a <span class="term-link" data-term="buyersAgent">buyer's agent</span></div>
+          <div class="row-sublabel">Typically 1.5-3% of price, or a flat fee</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="in-buyers-agent"><span class="switch-track"></span></label>
+      </div>
+      <div class="row hidden" id="in-buyers-agent-fee-row">
+        <span class="row-label">Fee</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-buyers-agent-pct" placeholder="2" value="2" style="text-align:right"><span>% of price</span></div>
       </div>
       <div class="row">
         <div class="row-sublabel">Stamp duty, legal fees, B&amp;P inspection and LMI are calculated automatically using your Rates tab defaults.</div>

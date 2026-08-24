@@ -207,7 +207,38 @@ const DEFAULT_UPFRONT_COSTS = {
   mortgageRegistrationFee: 175, // varies by state, ~$100-200
   transferRegistrationFee: 175,
   titleSearchAndOther: 300,
+  movingCosts: 1500, // removalists, utility connections etc. — a commonly-forgotten cost
 };
+
+// Buyer's agent fees are optional (most buyers don't use one) so this is a
+// toggle-on default, not part of the base upfront cost list above.
+// Percentage-based fees for a full-service engagement typically run 1.5-3%
+// of the purchase price (REBAA industry surveys); flat-fee agents commonly
+// charge $8,000-$30,000, averaging around $22,000. Percentage is used as
+// the default here since it scales sensibly across the price ranges this
+// app is used for.
+const DEFAULT_BUYERS_AGENT_PCT = 2;
+
+// ---------------------------------------------------------------------------
+// Rental yield benchmarks — NATIONAL gross-yield bands, for a general sense
+// of where a number sits, not a location- or property-type-specific verdict.
+// Source: Cotality (CoreLogic) national gross yield data and multiple 2026
+// industry guides, cross-checked. Actual "good" varies enormously — a 2.6%
+// Sydney house and an 11% regional WA house can both be a reasonable buy,
+// for very different reasons (growth vs income). These bands are a starting
+// orientation point only.
+// ---------------------------------------------------------------------------
+
+const YIELD_BANDS = [
+  { max: 3.5, label: "Low — relies on capital growth", tier: "neutral" },
+  { max: 5, label: "Solid for a capital city", tier: "positive" },
+  { max: 7, label: "Strong", tier: "positive" },
+  { max: Infinity, label: "Very high — often regional or higher-risk", tier: "neutral" },
+];
+
+function yieldBand(yieldPct) {
+  return YIELD_BANDS.find((b) => yieldPct <= b.max) || YIELD_BANDS[YIELD_BANDS.length - 1];
+}
 
 function defaultUpfrontCostsTotal() {
   return Object.values(DEFAULT_UPFRONT_COSTS).reduce((a, b) => a + b, 0);
@@ -302,6 +333,9 @@ const PropRatesExports = {
   RENTVESTING_FHB_IMPACT,
   RATES_LAST_VERIFIED,
   RECOMMENDED_EMERGENCY_BUFFER,
+  DEFAULT_BUYERS_AGENT_PCT,
+  YIELD_BANDS,
+  yieldBand,
 };
 
 if (typeof module !== "undefined") {

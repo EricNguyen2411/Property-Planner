@@ -36,7 +36,7 @@ const GLOSSARY = {
   yield: {
     term: "Yield",
     full: "Rental yield",
-    definition: "Annual rent as a percentage of the property's price — a quick way to compare how much income different properties generate. A $500,000 property renting for $500/week earns $26,000/year, a 5.2% gross yield. It doesn't account for costs, so it's a starting point, not the full picture.",
+    definition: "Annual rent as a percentage of the property's price — a quick way to compare how much income different properties generate. A $500,000 property renting for $500/week earns $26,000/year, a 5.2% gross yield. As a rough national guide: below 3.5% is low (you're relying on capital growth instead), 3.5-5% is solid for a capital city, 5-7% is strong, and above 7% is very high, often regional or higher-risk. This varies enormously by location and property type though — a Sydney house yielding 2.6% and a regional WA house yielding 11% can both be reasonable buys, for very different reasons.",
   },
   dti: {
     term: "DTI",
@@ -102,6 +102,11 @@ const GLOSSARY = {
     term: "Cross-collateralisation",
     full: "Cross-collateralisation",
     definition: "When a lender uses more than one of your properties as combined security for a loan. It can look convenient — one lender, one relationship — but it means you can't sell, refinance, or switch lenders on one property without the lender's approval across all of them. If one property drops in value, the lender can call in debt across the whole structure, not just that property. Ask any lender directly: \"Will my properties be cross-collateralised?\" and request standalone security if not.",
+  },
+  buyersAgent: {
+    term: "Buyer's agent",
+    full: "Buyer's agent",
+    definition: "A licensed professional who searches, evaluates and negotiates on your behalf — the opposite of a selling agent, who works for the vendor. Typically charges 1.5-3% of the purchase price, or a flat fee commonly in the $8,000-$30,000 range for a full-service engagement. Worth weighing against the value of their local knowledge and negotiation, not just the fee itself.",
   },
   cgt: {
     term: "Capital gains tax",

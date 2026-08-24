@@ -847,6 +847,21 @@ html[data-theme="dark"] .status-banner.neutral { color: #E8CB8C; }
 .story-card-verdict.positive { color: var(--positive); }
 .story-card-verdict.negative { color: var(--negative); }
 
+/* Yield benchmark badge */
+.yield-badge {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.yield-badge.positive { background: var(--positive-tint); color: #2A5943; }
+.yield-badge.neutral { background: var(--gold-tint); color: #8A6414; }
+html[data-theme="dark"] .yield-badge.positive { color: #A9D9C1; }
+html[data-theme="dark"] .yield-badge.neutral { color: #E8CB8C; }
+
 .guided-continue-btn { background: var(--accent); }
 .welcome-title {
   font-family: var(--font-display);
@@ -906,6 +921,7 @@ html[data-theme="dark"] .status-banner.neutral { color: #E8CB8C; }
 .compare-stat-value { font-size: 15px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; margin-top: 1px; }
 .compare-stat-value.negative { color: var(--negative); }
 .compare-stat-value.positive { color: var(--positive); }
+.compare-stat-value.neutral { color: var(--gold); }
 .compare-empty {
   text-align: center;
   padding: 30px 20px;

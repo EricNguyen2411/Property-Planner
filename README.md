@@ -62,7 +62,7 @@ The app then runs offline, with its own icon, no browser chrome.
 Whenever you edit any file, bump the cache version in `service-worker.js`:
 
 ```js
-const CACHE_VERSION = "property-planner-v13"; // increment this
+const CACHE_VERSION = "property-planner-v14"; // increment this
 ```
 
 Then commit and push — GitHub Pages redeploys automatically within a minute or two. On your phone, **fully close** the app (not just background it) and reopen it to pick up the update; the service worker deliberately waits for a clean restart rather than hot-swapping mid-session.
@@ -85,6 +85,10 @@ All four were edge cases unlikely to affect a typical first-time buyer, except t
 ### August 2026 navigation redesign
 
 The app was rebuilt around a Home dashboard instead of a flat row of tabs. Every calculation engine was left untouched — this was purely a navigation and information-architecture change, re-verified against the full calculation regression suite afterward to confirm nothing broke.
+
+### August 2026 — buyer's agent costs & yield benchmarks
+
+Added an optional buyer's agent fee (Costs and Invest tabs, toggle-on, defaults to 2% of price — typical range researched at 1.5-3%, or a flat $8,000-$30,000). Also added a small "moving costs" default ($1,500) to the standard upfront cost list, since it's a commonly-forgotten line item — this modestly reduces every affordability calculation's max price versus before, which is intentional and correct, not a bug. Yield now shows a colour-coded benchmark badge (Low / Solid / Strong / Very high) based on researched national gross-yield bands, with an explicit caveat that "good" varies hugely by location and property type.
 
 ## Investment cashflow assumptions
 
