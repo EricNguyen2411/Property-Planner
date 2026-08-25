@@ -405,15 +405,29 @@ function borrowingPower({
   existingLoanBalancesTotal = 0, // optional, for the DTI check only
   annualRatePct,
   termYears,
+  // Joint applications: each applicant's income is still taxed individually
+  // (brackets, LITO, Medicare levy and HECS are all per-person, never
+  // household), then the two net incomes are combined. Expenses, dependents
+  // and existing debts stay as the single household figures above — that's
+  // how a joint application is actually assessed, not doubled.
+  partner2 = null, // { grossSalaryAnnual, otherIncomeAnnual, otherIncomeShadePct, hasHecsDebt }
 }) {
   const shadedOtherIncome = otherIncomeAnnual * (otherIncomeShadePct / 100);
   const taxableEmploymentIncome = grossSalaryAnnual + shadedOtherIncome;
-
   const netEmploymentIncome = TaxModule.netAnnualIncome(taxableEmploymentIncome, hasHecsDebt);
+
+  let partner2TaxableEmploymentIncome = 0;
+  let partner2NetEmploymentIncome = 0;
+  if (partner2 && partner2.grossSalaryAnnual > 0) {
+    const p2ShadePct = partner2.otherIncomeShadePct != null ? partner2.otherIncomeShadePct : 80;
+    const p2ShadedOther = (partner2.otherIncomeAnnual || 0) * (p2ShadePct / 100);
+    partner2TaxableEmploymentIncome = partner2.grossSalaryAnnual + p2ShadedOther;
+    partner2NetEmploymentIncome = TaxModule.netAnnualIncome(partner2TaxableEmploymentIncome, !!partner2.hasHecsDebt);
+  }
 
   const shadedRentalAnnual = isInvestmentPurchase ? rentalIncomeWeekly * 52 * (rentalIncomeShadePct / 100) : 0;
 
-  const netAnnualIncomeTotal = netEmploymentIncome + shadedRentalAnnual;
+  const netAnnualIncomeTotal = netEmploymentIncome + partner2NetEmploymentIncome + shadedRentalAnnual;
   const netMonthlyIncome = netAnnualIncomeTotal / 12;
 
   const livingExpenses = livingExpensesMonthly != null && livingExpensesMonthly > 0
@@ -428,12 +442,15 @@ function borrowingPower({
   const assessedRatePct = annualRatePct + APRA_SERVICEABILITY_BUFFER_PCT;
   const maxLoan = Math.max(maxLoanFromRepayment(Math.max(netMonthlySurplus, 0), assessedRatePct, termYears), 0);
 
-  const grossAnnualIncome = grossSalaryAnnual + otherIncomeAnnual + (isInvestmentPurchase ? rentalIncomeWeekly * 52 : 0);
+  const partner2GrossAnnual = partner2 ? (partner2.grossSalaryAnnual || 0) + (partner2.otherIncomeAnnual || 0) : 0;
+  const grossAnnualIncome = grossSalaryAnnual + otherIncomeAnnual + partner2GrossAnnual + (isInvestmentPurchase ? rentalIncomeWeekly * 52 : 0);
   const dti = grossAnnualIncome > 0 ? (existingLoanBalancesTotal + maxLoan) / grossAnnualIncome : 0;
 
   return {
     taxableEmploymentIncome,
     netEmploymentIncome,
+    partner2TaxableEmploymentIncome,
+    partner2NetEmploymentIncome,
     shadedRentalAnnual,
     netAnnualIncomeTotal,
     netMonthlyIncome,
@@ -445,6 +462,55 @@ function borrowingPower({
     maxLoan: Math.floor(maxLoan / 100) * 100, // round down to nearest $100, stay conservative
     dti,
     dtiExceedsSix: dti >= 6,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Deposit savings goal planner — shows both directions at once: how long a
+// given monthly contribution takes to reach the goal, AND what monthly
+// contribution a given target date requires. Uses standard monthly-
+// compounding future-value-of-an-annuity math throughout (contributions
+// assumed at the end of each month).
+// ---------------------------------------------------------------------------
+function savingsGoalPlan({
+  currentSavings,
+  targetDeposit,
+  monthlyAmount,      // for "how long will this take" — may be 0/omitted
+  monthsUntilTarget,   // for "what do I need per month" — may be 0/omitted
+  annualInterestRatePct = 0,
+}) {
+  const r = (annualInterestRatePct / 100) / 12; // monthly rate
+  const shortfall = Math.max(targetDeposit - currentSavings, 0);
+
+  let monthsToGoal = null;
+  if (monthlyAmount > 0) {
+    if (shortfall <= 0) {
+      monthsToGoal = 0;
+    } else if (r === 0) {
+      monthsToGoal = shortfall / monthlyAmount;
+    } else {
+      const denom = currentSavings + monthlyAmount / r;
+      const x = (targetDeposit + monthlyAmount / r) / denom;
+      monthsToGoal = x > 0 ? Math.log(x) / Math.log(1 + r) : null;
+    }
+  }
+
+  let requiredMonthly = null;
+  if (monthsUntilTarget > 0) {
+    if (r === 0) {
+      requiredMonthly = shortfall / monthsUntilTarget;
+    } else {
+      const growthFactor = Math.pow(1 + r, monthsUntilTarget);
+      const futureValueOfCurrent = currentSavings * growthFactor;
+      const remaining = targetDeposit - futureValueOfCurrent;
+      requiredMonthly = remaining > 0 ? (remaining * r) / (growthFactor - 1) : 0;
+    }
+  }
+
+  return {
+    shortfall,
+    monthsToGoal: monthsToGoal != null && monthsToGoal >= 0 ? monthsToGoal : null,
+    requiredMonthly: requiredMonthly != null ? Math.max(requiredMonthly, 0) : null,
   };
 }
 
@@ -594,6 +660,7 @@ const PropCalcExports = {
   investmentAnalysis,
   maxLoanFromRepayment,
   borrowingPower,
+  savingsGoalPlan,
   loanBalanceAfterYears,
   investmentThenHomeJourney,
   exitEstimate,

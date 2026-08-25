@@ -84,7 +84,7 @@
   const tabButtons = document.querySelectorAll(".tab-btn");
   const screens = document.querySelectorAll(".screen");
   const HOME_GROUP = ["home", "afford", "invest", "costs", "journey"];
-  const MORE_GROUP = ["more", "mortgage", "compare", "rates"];
+  const MORE_GROUP = ["more", "mortgage", "compare", "savings", "rates"];
 
   function switchToScreen(screenId) {
     screens.forEach((s) => s.classList.remove("active"));
@@ -359,6 +359,11 @@
 
   let lastBorrowingPowerResult = null;
 
+  document.getElementById("bp-joint").addEventListener("change", (e) => {
+    document.getElementById("bp-partner-group").classList.toggle("hidden", !e.target.checked);
+    saveState();
+  });
+
   document.getElementById("bp-calc").addEventListener("click", () => {
     const grossSalaryAnnual = parseNum(document.getElementById("bp-salary").value);
     if (grossSalaryAnnual <= 0) {
@@ -366,6 +371,8 @@
       return;
     }
     const isInvestmentPurchase = document.getElementById("bp-is-investment").checked;
+    const isJoint = document.getElementById("bp-joint").checked;
+    const partner2Salary = parseNum(document.getElementById("bp2-salary").value);
     const result = C.borrowingPower({
       grossSalaryAnnual,
       otherIncomeAnnual: parseNum(document.getElementById("bp-other-income").value),
@@ -381,20 +388,35 @@
       existingLoanBalancesTotal: parseNum(document.getElementById("bp-existing-balances").value),
       annualRatePct: parseNum(document.getElementById("bp-rate").value) || 6.5,
       termYears: parseNum(document.getElementById("bp-term").value) || 30,
+      partner2: isJoint && partner2Salary > 0 ? {
+        grossSalaryAnnual: partner2Salary,
+        otherIncomeAnnual: parseNum(document.getElementById("bp2-other-income").value),
+        hasHecsDebt: document.getElementById("bp2-hecs").checked,
+      } : null,
     });
     lastBorrowingPowerResult = result;
 
     // Persist gross salary/other income (deliberately excluding rental — see
-    // MORTGAGE_STRESS_BANDS comment) so other screens can stress-test
-    // whatever loan amount they're looking at against real income.
+    // MORTGAGE_STRESS_BANDS comment), combining both incomes for a joint
+    // application, so other screens can stress-test whatever loan amount
+    // they're looking at against real household income.
+    const combinedGrossIncome = grossSalaryAnnual + parseNum(document.getElementById("bp-other-income").value)
+      + (isJoint ? partner2Salary + parseNum(document.getElementById("bp2-other-income").value) : 0);
     try {
-      localStorage.setItem("property-planner-gross-income-v1", JSON.stringify({ grossAnnualIncome: grossSalaryAnnual + parseNum(document.getElementById("bp-other-income").value) }));
+      localStorage.setItem("property-planner-gross-income-v1", JSON.stringify({ grossAnnualIncome: combinedGrossIncome }));
     } catch (e) {}
 
     document.getElementById("bp-max-loan").textContent = fmt$(result.maxLoan);
+    const incomeRows = [["Your net income", result.netEmploymentIncome, false]];
+    if (isJoint && result.partner2NetEmploymentIncome > 0) {
+      incomeRows.push(["Partner's net income", result.partner2NetEmploymentIncome, false]);
+    }
+    if (result.shadedRentalAnnual > 0) {
+      incomeRows.push(["Shaded rental income", result.shadedRentalAnnual, false]);
+    }
     document.getElementById("bp-breakdown").innerHTML =
+      breakdownRows(incomeRows) +
       breakdownRows([
-        ["Net income (incl. shaded rent)", result.netAnnualIncomeTotal, false],
         ["Living expenses", -result.livingExpenses * 12, true],
         ["Existing debt commitments", -result.totalDebtCommitmentsMonthly * 12, true],
       ]) +
@@ -645,7 +667,7 @@
     document.getElementById("mg-stress-test").innerHTML = breakdownRows(rows);
   }
 
-  document.getElementById("mg-calc").addEventListener("click", () => {
+  function runMortgageCalc(showAlertIfEmpty) {
     const loanAmount = parseNum(document.getElementById("mg-loan").value);
     const annualRatePct = parseNum(document.getElementById("mg-rate").value) || 6;
     const termYears = parseNum(document.getElementById("mg-term").value) || 30;
@@ -655,7 +677,7 @@
     const offsetBalance = parseNum(document.getElementById("mg-offset").value);
 
     if (loanAmount <= 0) {
-      alert("Enter a loan amount first.");
+      if (showAlertIfEmpty) alert("Enter a loan amount first.");
       return;
     }
 
@@ -699,6 +721,17 @@
 
     document.getElementById("mg-results").classList.remove("hidden");
     saveState();
+  }
+
+  document.getElementById("mg-calc").addEventListener("click", () => runMortgageCalc(true));
+
+  // Quick lookup: recalculates live as you type the loan amount, rate or
+  // term — no need to press Calculate just to see the repayment.
+  ["mg-loan", "mg-rate", "mg-term"].forEach((id) => {
+    document.getElementById(id).addEventListener("input", () => runMortgageCalc(false));
+  });
+  document.querySelectorAll("#mg-type, #mg-freq").forEach((seg) => {
+    seg.addEventListener("click", () => runMortgageCalc(false));
   });
 
   // ---------------------------------------------------------------------
@@ -1199,6 +1232,81 @@
   renderCompareList();
 
   // ---------------------------------------------------------------------
+  // SAVINGS GOAL tab
+  // ---------------------------------------------------------------------
+  function updateSavingsTargetHint() {
+    const price = parseNum(document.getElementById("co-price").value);
+    const loan = parseNum(document.getElementById("co-loan").value);
+    const hintEl = document.getElementById("sg-target-hint");
+    if (!hintEl) return;
+    if (price > 0 && loan >= 0 && loan <= price) {
+      hintEl.innerHTML = `Based on This Property: ${fmt$(price - loan)} <span class="term-link" data-sg-use-implied>— use this</span>`;
+    } else {
+      hintEl.textContent = "";
+    }
+  }
+  document.getElementById("screen-savings").addEventListener("click", (e) => {
+    if (e.target.closest("[data-sg-use-implied]")) {
+      const price = parseNum(document.getElementById("co-price").value);
+      const loan = parseNum(document.getElementById("co-loan").value);
+      document.getElementById("sg-target").value = Math.round(price - loan).toLocaleString("en-AU");
+    }
+  });
+
+  document.getElementById("sg-calc").addEventListener("click", () => {
+    const currentSavings = parseNum(document.getElementById("sg-current").value);
+    const targetDeposit = parseNum(document.getElementById("sg-target").value);
+    const monthlyAmount = parseNum(document.getElementById("sg-monthly").value);
+    const annualInterestRatePct = parseNum(document.getElementById("sg-rate").value) || 0;
+    const targetDateStr = document.getElementById("sg-target-date").value; // "YYYY-MM"
+
+    if (targetDeposit <= 0) {
+      alert("Enter a target deposit first.");
+      return;
+    }
+
+    const now = new Date();
+    let monthsUntilTarget = 0;
+    if (targetDateStr) {
+      const [ty, tm] = targetDateStr.split("-").map(Number);
+      monthsUntilTarget = (ty - now.getFullYear()) * 12 + (tm - (now.getMonth() + 1));
+    }
+
+    const result = C.savingsGoalPlan({
+      currentSavings, targetDeposit, monthlyAmount,
+      monthsUntilTarget: monthsUntilTarget > 0 ? monthsUntilTarget : 0,
+      annualInterestRatePct,
+    });
+
+    // Direction A: given the monthly amount, when will they get there?
+    if (monthlyAmount > 0 && result.monthsToGoal != null) {
+      const wholeMonths = Math.ceil(result.monthsToGoal);
+      const reachDate = new Date(now.getFullYear(), now.getMonth() + wholeMonths, 1);
+      const dateLabel = reachDate.toLocaleDateString("en-AU", { month: "long", year: "numeric" });
+      document.getElementById("sg-months-result").textContent = wholeMonths <= 0 ? "Already there" : `${wholeMonths} ${wholeMonths === 1 ? "month" : "months"}`;
+      document.getElementById("sg-months-caption").textContent = wholeMonths <= 0
+        ? `Your current savings already meet the target.`
+        : `Saving ${fmt$(monthlyAmount)}/month — you'd reach ${fmt$(targetDeposit)} around ${dateLabel}.`;
+    } else {
+      document.getElementById("sg-months-result").textContent = "—";
+      document.getElementById("sg-months-caption").textContent = "Enter a monthly savings amount above.";
+    }
+
+    // Direction B: given the target date, how much per month is needed?
+    if (monthsUntilTarget > 0 && result.requiredMonthly != null) {
+      document.getElementById("sg-required-result").textContent = fmt$(result.requiredMonthly) + "/mo";
+      document.getElementById("sg-required-caption").textContent =
+        `To reach ${fmt$(targetDeposit)} in ${monthsUntilTarget} ${monthsUntilTarget === 1 ? "month" : "months"}, save ${fmt$(result.requiredMonthly)} every month.`;
+    } else {
+      document.getElementById("sg-required-result").textContent = "—";
+      document.getElementById("sg-required-caption").textContent = "Pick a target month above.";
+    }
+
+    document.getElementById("sg-results").classList.remove("hidden");
+    saveState();
+  });
+
+  // ---------------------------------------------------------------------
   // RATES tab
   // ---------------------------------------------------------------------
   function renderRatesTab() {
@@ -1283,6 +1391,7 @@
     "bp-salary", "bp-other-income", "bp-rent", "bp-rent-shade", "bp-dependents",
     "bp-living", "bp-cc-limit", "bp-personal-loan", "bp-other-loan",
     "bp-existing-balances", "bp-rate", "bp-term",
+    "bp2-salary", "bp2-other-income",
   ];
   const JY_FIELD_IDS = [
     "jy-price1", "jy-deposit1", "jy-rate1", "jy-term1", "jy-growth1",
@@ -1316,6 +1425,8 @@
           bp: bpVals,
           bpIsInvestment: document.getElementById("bp-is-investment").checked,
           bpHecs: document.getElementById("bp-hecs").checked,
+          bpJoint: document.getElementById("bp-joint").checked,
+          bp2Hecs: document.getElementById("bp2-hecs").checked,
         },
         mg: {
           loan: document.getElementById("mg-loan").value,
@@ -1374,6 +1485,11 @@
           document.getElementById("bp-rent-shade-row").classList.toggle("hidden", !s.af.bpIsInvestment);
         }
         if (s.af.bpHecs !== undefined) document.getElementById("bp-hecs").checked = !!s.af.bpHecs;
+        if (s.af.bpJoint !== undefined) {
+          document.getElementById("bp-joint").checked = !!s.af.bpJoint;
+          document.getElementById("bp-partner-group").classList.toggle("hidden", !s.af.bpJoint);
+        }
+        if (s.af.bp2Hecs !== undefined) document.getElementById("bp2-hecs").checked = !!s.af.bp2Hecs;
       }
       if (s.mg) {
         setIfPresent("mg-loan", s.mg.loan);
@@ -1570,6 +1686,10 @@
   document.getElementById("co-price").addEventListener("input", updateCoDepositImplied);
   document.getElementById("co-loan").addEventListener("input", updateCoDepositImplied);
   updateCoDepositImplied();
+
+  document.getElementById("co-price").addEventListener("input", updateSavingsTargetHint);
+  document.getElementById("co-loan").addEventListener("input", updateSavingsTargetHint);
+  updateSavingsTargetHint();
 
   // Buyer's agent fee mode toggles (% of price vs flat $)
   wireFeeModeToggle({

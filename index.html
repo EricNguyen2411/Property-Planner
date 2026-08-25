@@ -99,8 +99,39 @@
           <label class="switch"><input type="checkbox" id="bp-hecs"><span class="switch-track"></span></label>
         </div>
         <div class="row">
+          <div>
+            <div class="row-label">Applying with a partner</div>
+            <div class="row-sublabel">Combines both incomes for a joint application</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="bp-joint"><span class="switch-track"></span></label>
+        </div>
+        <div class="row">
           <span class="row-label">Dependents</span>
           <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="bp-dependents" placeholder="0" value="0" style="text-align:right"></div>
+        </div>
+      </div>
+
+      <div id="bp-partner-group" class="hidden">
+        <div class="eyebrow">Partner's income</div>
+        <div class="group">
+          <div class="row">
+            <span class="row-label">Partner's gross salary</span>
+            <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp2-salary" placeholder="90,000" value="90,000"><span>/yr</span></div>
+          </div>
+          <div class="row">
+            <div>
+              <div class="row-label">Partner's other income</div>
+              <div class="row-sublabel">Bonus / overtime, shaded 80%</div>
+            </div>
+            <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp2-other-income" placeholder="0"><span>/yr</span></div>
+          </div>
+          <div class="row">
+            <span class="row-label">Partner has <span class="term-link" data-term="hecs">HECS / HELP</span> debt</span>
+            <label class="switch"><input type="checkbox" id="bp2-hecs"><span class="switch-track"></span></label>
+          </div>
+          <div class="row">
+            <div class="row-sublabel">Each of you is taxed individually — brackets, Medicare levy and HECS all apply per person — then the two after-tax incomes are combined. Dependents, expenses and debts below stay as one household total, matching how lenders actually assess a joint application.</div>
+          </div>
         </div>
       </div>
 
@@ -786,6 +817,74 @@
     <div id="cp-list"></div>
   </section>
 
+  <!-- ===================== SAVINGS GOAL TAB ===================== -->
+  <section id="screen-savings" class="screen">
+    <button class="back-to-home-link" data-back-more>← Back to More</button>
+    <div class="large-title">Deposit savings goal</div>
+    <p class="screen-subtitle">Work out how much to put aside each month — or how long it'll take at the rate you're already saving.</p>
+
+    <div class="eyebrow">Your goal</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Current savings</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="sg-current" placeholder="20,000" value="20,000"></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Target deposit</div>
+          <div class="row-sublabel" id="sg-target-hint"></div>
+        </div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="sg-target" placeholder="80,000" value="80,000"></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Assumed interest rate</div>
+          <div class="row-sublabel">On a high-interest savings account</div>
+        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="sg-rate" placeholder="4.5" value="4.5" style="text-align:right"><span>% p.a.</span></div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Both directions at once</div>
+    <div class="group">
+      <div class="row">
+        <div>
+          <div class="row-label">If you save this much monthly</div>
+          <div class="row-sublabel">Tells you when you'll reach your goal</div>
+        </div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="sg-monthly" placeholder="1,500" value="1,500"></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">If you want to hit it by this date</div>
+          <div class="row-sublabel">Tells you the $/month you'd need</div>
+        </div>
+        <input class="row-input" type="month" id="sg-target-date" style="text-align:right; max-width:150px;">
+      </div>
+    </div>
+
+    <button class="btn-primary" id="sg-calc">Calculate</button>
+
+    <div id="sg-results" class="hidden">
+      <div class="hero-result">
+        <div class="hero-label">At your monthly amount</div>
+        <div class="hero-number tabular" id="sg-months-result">—</div>
+        <div class="hero-caption" id="sg-months-caption"></div>
+      </div>
+
+      <div class="hero-result" style="margin-top:14px;">
+        <div class="hero-label">To hit your target date</div>
+        <div class="hero-number tabular" id="sg-required-result">—</div>
+        <div class="hero-caption" id="sg-required-caption"></div>
+      </div>
+
+      <div class="info-note">
+        <span class="dot"></span>
+        <span>Assumes you save the same amount every month into an account earning a steady rate, with interest compounding monthly. Real savings accounts often pay a lower "base" rate unless you meet monthly conditions (growing your balance, no withdrawals) — check the actual terms before relying on this.</span>
+      </div>
+    </div>
+  </section>
+
   <!-- ===================== RATES / SETTINGS TAB ===================== -->
   <section id="screen-rates" class="screen">
     <button class="back-to-home-link" data-back-more>← Back to More</button>
@@ -913,6 +1012,13 @@
         <div>
           <div class="row-label">Compare properties</div>
           <div class="row-sublabel">Save a few real listings side by side</div>
+        </div>
+        <span class="chevron">›</span>
+      </div>
+      <div class="row tappable" data-goto="savings">
+        <div>
+          <div class="row-label">Deposit savings goal</div>
+          <div class="row-sublabel">How much to put aside each month</div>
         </div>
         <span class="chevron">›</span>
       </div>

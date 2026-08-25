@@ -61,7 +61,7 @@ The app then runs offline, with its own icon, no browser chrome.
 Whenever you edit any file, bump the cache version in `service-worker.js`:
 
 ```js
-const CACHE_VERSION = "property-planner-v21"; // increment this
+const CACHE_VERSION = "property-planner-v22"; // increment this
 ```
 
 Then commit and push — GitHub Pages redeploys automatically within a minute or two. On your phone, **fully close** the app (not just background it) and reopen it to pick up the update; the service worker deliberately waits for a clean restart rather than hot-swapping mid-session.
@@ -114,6 +114,12 @@ The Invest tab's "Total capital required" now has a "Show calculation" toggle un
 ### August 2026 — Invest and Costs merged
 
 These two tabs computed the same upfront costs slightly differently (Invest additionally counted renovation and misc fees, Costs didn't), which meant identical inputs could show two different totals — confusing, and no longer defensible once price/loan/deposit started syncing live between them. They're now one screen, "This Property," with an "Is this an investment?" toggle: off behaves like the old Costs tab, on reveals the rental/yield/tax/CGT sections underneath the exact same cost breakdown. The upfront-cost formula is now identical in both modes — investment mode only adds analysis on top, it never changes the base total. Home's dashboard and the Continue-button chain were both updated to match (3 steps instead of 4: Afford → This Property → Journey).
+
+### August 2026 — quick mortgage, joint applications, deposit savings goal
+
+- **Mortgage tab** now recalculates live as you type the loan amount, rate or term (or change repayment type/frequency) — no need to press Calculate for a quick lookup.
+- **Joint applications**: the borrowing power panel has an "Applying with a partner?" toggle that adds a second income section. Each person's income is taxed individually — brackets, Medicare levy and HECS are all per-person, never household — then the two after-tax incomes are combined. Dependents, living expenses and debts stay as the single household figures they already were, matching how a joint application is actually assessed.
+- **Deposit savings goal** (new, under More): shows both directions of a savings plan at once — how long a given monthly amount takes to reach your target, and what monthly amount a given target date requires. Uses proper monthly-compounding math (verified against a forward month-by-month simulation), with an editable assumed interest rate defaulting to 4.5% (researched against current no-conditions savings account rates, which sit around 4.85-5.10%). Can pre-fill its target from This Property's implied deposit.
 
 ## Investment cashflow assumptions
 
