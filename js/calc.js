@@ -425,7 +425,13 @@ function borrowingPower({
     partner2NetEmploymentIncome = TaxModule.netAnnualIncome(partner2TaxableEmploymentIncome, !!partner2.hasHecsDebt);
   }
 
-  const shadedRentalAnnual = isInvestmentPurchase ? rentalIncomeWeekly * 52 * (rentalIncomeShadePct / 100) : 0;
+  // Rental income is credited whenever a figure is provided, independent of
+  // whether THIS specific purchase is the investment — Property 2 in the
+  // Journey tab is a home, not an investment, but Property 1's rent should
+  // still count toward serviceability for it. isInvestmentPurchase is kept
+  // as a parameter for callers that want to gate the UI/fields, not to gate
+  // the math itself.
+  const shadedRentalAnnual = rentalIncomeWeekly > 0 ? rentalIncomeWeekly * 52 * (rentalIncomeShadePct / 100) : 0;
 
   const netAnnualIncomeTotal = netEmploymentIncome + partner2NetEmploymentIncome + shadedRentalAnnual;
   const netMonthlyIncome = netAnnualIncomeTotal / 12;
@@ -443,7 +449,7 @@ function borrowingPower({
   const maxLoan = Math.max(maxLoanFromRepayment(Math.max(netMonthlySurplus, 0), assessedRatePct, termYears), 0);
 
   const partner2GrossAnnual = partner2 ? (partner2.grossSalaryAnnual || 0) + (partner2.otherIncomeAnnual || 0) : 0;
-  const grossAnnualIncome = grossSalaryAnnual + otherIncomeAnnual + partner2GrossAnnual + (isInvestmentPurchase ? rentalIncomeWeekly * 52 : 0);
+  const grossAnnualIncome = grossSalaryAnnual + otherIncomeAnnual + partner2GrossAnnual + (rentalIncomeWeekly > 0 ? rentalIncomeWeekly * 52 : 0);
   const dti = grossAnnualIncome > 0 ? (existingLoanBalancesTotal + maxLoan) / grossAnnualIncome : 0;
 
   return {
@@ -526,6 +532,87 @@ function loanBalanceAfterYears(loanAmount, annualRatePct, termYears, yearsElapse
     balance = Math.max(balance - (repayment - interest), 0);
   }
   return balance;
+}
+
+// Same idea, but paying a FIXED monthly amount that may exceed the minimum
+// required repayment (extra/voluntary repayments) — the loan amortizes
+// faster and is capped at $0 once paid off early.
+function loanBalanceWithFixedPayment(loanAmount, annualRatePct, termYears, yearsElapsed, fixedMonthlyPayment) {
+  const periodRate = annualRatePct / 100 / 12;
+  const monthsElapsed = Math.round(yearsElapsed * 12);
+  let balance = loanAmount;
+  for (let i = 0; i < monthsElapsed; i++) {
+    if (balance <= 0) return 0;
+    const interest = balance * periodRate;
+    balance = Math.max(balance - (fixedMonthlyPayment - interest), 0);
+  }
+  return balance;
+}
+
+// ---------------------------------------------------------------------------
+// 10-year year-by-year projection for an investment property: value, loan
+// balance (standard and with extra repayments), equity, rent and cashflow
+// for years 0-10. Property value and rent both compound at their own growth
+// rates; ongoing expenses are held flat (year-1 levels) throughout, which is
+// a deliberate simplification, not an oversight — it matches how these
+// projections are conventionally presented and keeps the table legible.
+// ---------------------------------------------------------------------------
+function tenYearProjection({
+  price,
+  depositPct,
+  annualRatePct,
+  termYears,
+  growthCagrPct,
+  rentWeekly,
+  rentGrowthPct,
+  combinedMonthlyContribution = 0, // for the extra-repayments comparison; 0 = same as minimum
+  fixedAnnualExpenses = 0, // from investmentAnalysis(), held flat across the projection
+}) {
+  const deposit = price * (depositPct / 100);
+  const loanAmount = price - deposit;
+  const minRepaymentMonthly = repaymentPI(loanAmount, annualRatePct, termYears, "monthly");
+  const extraPaymentMonthly = Math.max(combinedMonthlyContribution, minRepaymentMonthly);
+
+  const years = [];
+  for (let year = 0; year <= 10; year++) {
+    const propertyValue = price * Math.pow(1 + growthCagrPct / 100, year);
+    const loanBalanceMin = loanBalanceAfterYears(loanAmount, annualRatePct, termYears, year);
+    const loanBalanceExtra = loanBalanceWithFixedPayment(loanAmount, annualRatePct, termYears, year, extraPaymentMonthly);
+    const grossEquity = propertyValue - loanBalanceMin;
+    const usableEquity = Math.max(propertyValue * 0.8 - loanBalanceMin, 0);
+    const weeklyRent = rentWeekly * Math.pow(1 + rentGrowthPct / 100, year);
+    const monthlyRent = (weeklyRent * 52) / 12;
+    const monthlyExpenses = fixedAnnualExpenses / 12;
+    const preTaxCashflowMonthly = monthlyRent - minRepaymentMonthly - monthlyExpenses;
+    years.push({
+      year, propertyValue, loanBalanceMin, loanBalanceExtra, grossEquity, usableEquity,
+      weeklyRent, monthlyRepayment: minRepaymentMonthly, monthlyExpenses, monthlyRent,
+      preTaxCashflowMonthly, rentCoversRepayment: monthlyRent >= minRepaymentMonthly,
+    });
+  }
+
+  const interestSaved = (() => {
+    // Total interest paid under minimum repayments over the full term vs
+    // under the fixed (extra) payment until payoff, both to loan payoff.
+    const totalPaidMin = minRepaymentMonthly * termYears * 12;
+    const totalInterestMin = totalPaidMin - loanAmount;
+    // Find approximate payoff time under extra payments via simulation.
+    let balance = loanAmount;
+    const periodRate = annualRatePct / 100 / 12;
+    let months = 0;
+    let totalPaidExtra = 0;
+    while (balance > 0 && months < termYears * 12) {
+      const interest = balance * periodRate;
+      const principalPortion = Math.min(extraPaymentMonthly - interest, balance);
+      balance -= principalPortion;
+      totalPaidExtra += Math.min(extraPaymentMonthly, principalPortion + interest);
+      months++;
+    }
+    const totalInterestExtra = totalPaidExtra - loanAmount;
+    return { totalInterestMin, totalInterestExtra, interestSaved: Math.max(totalInterestMin - totalInterestExtra, 0), payoffYearsExtra: months / 12 };
+  })();
+
+  return { years, loanAmount, minRepaymentMonthly, extraPaymentMonthly, ...interestSaved };
 }
 
 // ---------------------------------------------------------------------------
@@ -662,6 +749,8 @@ const PropCalcExports = {
   borrowingPower,
   savingsGoalPlan,
   loanBalanceAfterYears,
+  loanBalanceWithFixedPayment,
+  tenYearProjection,
   investmentThenHomeJourney,
   exitEstimate,
   FREQUENCIES,

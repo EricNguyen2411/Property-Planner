@@ -698,6 +698,32 @@
         </div>
         <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="jy-growth1" placeholder="6" value="6" style="text-align:right"><span>% p.a.</span></div>
       </div>
+      <div class="row">
+        <span class="row-label">Expected weekly rent</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="jy-rent1" placeholder="550" value="550"><span>/wk</span></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Rent growth rate</div>
+          <div class="row-sublabel">Estimated annual increase</div>
+        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="jy-rent-growth1" placeholder="4" value="4" style="text-align:right"><span>% p.a.</span></div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Extra repayments (optional)</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Your monthly contribution</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="jy-extra-you" placeholder="0" value="0"></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Partner's monthly contribution</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="jy-extra-partner" placeholder="0" value="0"></div>
+      </div>
+      <div class="row">
+        <div class="row-sublabel">Combined total each month toward the loan. Leave both at $0 to use the standard minimum repayment throughout.</div>
+      </div>
     </div>
 
     <div class="eyebrow">The gap before Property 2</div>
@@ -731,9 +757,58 @@
       <div class="row">
         <div>
           <div class="row-label">Estimated future borrowing capacity</div>
-          <div class="row-sublabel">Run the Afford tab's income estimate for a future scenario, or enter your own</div>
+          <div class="row-sublabel">Or estimate it below from your projected income</div>
         </div>
         <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="jy-loan2" placeholder="700,000" value="700,000"></div>
+      </div>
+    </div>
+
+    <div class="row tappable" id="jy2-borrow-toggle-row">
+      <div>
+        <div class="row-label">Estimate it from your future income</div>
+        <div class="row-sublabel">Projects your income + Property 1's rent as a credit</div>
+      </div>
+      <span class="chevron" id="jy2-borrow-chevron">›</span>
+    </div>
+    <div id="jy2-borrow-panel" class="hidden">
+      <div class="eyebrow">Income at time of purchase</div>
+      <div class="group">
+        <div class="row">
+          <span class="row-label">Your gross salary then</span>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="jy2-salary" placeholder="130,000" value="130,000"><span>/yr</span></div>
+        </div>
+        <div class="row">
+          <div>
+            <div class="row-label">Applying with a partner</div>
+            <div class="row-sublabel">Combines both incomes</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="jy2-joint" checked><span class="switch-track"></span></label>
+        </div>
+        <div class="row" id="jy2-partner-row">
+          <span class="row-label">Partner's gross salary then</span>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="jy2-partner-salary" placeholder="140,000" value="140,000"><span>/yr</span></div>
+        </div>
+        <div class="row">
+          <div>
+            <div class="row-label">Credit Property 1's rent</div>
+            <div class="row-sublabel">Lenders typically credit 70-80% of rental income</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="jy2-rent-credit" checked><span class="switch-track"></span></label>
+        </div>
+        <div class="row">
+          <span class="row-label">Rent credit shading</span>
+          <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="jy2-rent-shade" placeholder="70" value="70" style="text-align:right"><span>%</span></div>
+        </div>
+      </div>
+      <button class="btn-secondary" id="jy2-borrow-calc">Estimate borrowing capacity</button>
+      <div id="jy2-borrow-results" class="hidden">
+        <div class="hero-result">
+          <div class="hero-label">Estimated maximum loan</div>
+          <div class="hero-number tabular" id="jy2-max-loan">$0</div>
+          <div class="hero-caption">using your rate + the 3% APRA serviceability buffer</div>
+        </div>
+        <div class="breakdown" id="jy2-borrow-breakdown"></div>
+        <button class="btn-primary" id="jy2-borrow-use">Use this as my borrowing capacity</button>
       </div>
     </div>
 
@@ -743,10 +818,31 @@
       <div class="eyebrow">Property 1, at year of purchasing Property 2</div>
       <div class="breakdown" id="jy-property1-breakdown"></div>
 
+      <div class="eyebrow">10-year projection</div>
+      <p class="screen-subtitle" style="margin-top:-4px;">Snapshots at Year 5, 7 and 10 — property value, loan balance and usable equity, given your growth and rent-growth assumptions above.</p>
+      <div id="jy-projection-cards"></div>
+      <div id="jy-extra-repay-summary"></div>
+
       <div class="hero-result">
         <div class="hero-label">Deposit available for Property 2</div>
         <div class="hero-number tabular" id="jy-deposit2">$0</div>
         <div class="hero-caption">released equity + additional savings</div>
+      </div>
+
+      <div class="eyebrow">Sell vs keep, at Year <span id="jy-sellkeep-year"></span></div>
+      <p class="screen-subtitle" style="margin-top:-4px;">Two ways to fund Property 2 from Property 1 — sell it outright, or keep it and release equity (the approach used above).</p>
+      <div class="group">
+        <div class="row"><span class="row-label" style="font-weight:600;">If you sell</span><span></span></div>
+      </div>
+      <div class="breakdown" id="jy-sell-breakdown"></div>
+      <div class="group" style="margin-top:14px;">
+        <div class="row"><span class="row-label" style="font-weight:600;">If you keep it</span><span></span></div>
+      </div>
+      <div class="breakdown" id="jy-keep-breakdown"></div>
+      <div class="status-banner neutral" id="jy-sellkeep-verdict"></div>
+      <div class="info-note">
+        <span class="dot"></span>
+        <span>The sell figures use the same capital gains tax treatment as the exit estimate elsewhere in the app — the 2026 reform's indexation method for an established property, or a choice of methods for a new build. Both sides are directional, not advice — a real decision should factor in your actual income in that year, market conditions at the time, and selling/buying costs that can vary.</span>
       </div>
 
       <div class="eyebrow">Property 2 — maximum price</div>

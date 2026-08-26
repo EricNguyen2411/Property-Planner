@@ -358,6 +358,8 @@
   });
 
   let lastBorrowingPowerResult = null;
+  let lastJourneyProjection = null;
+  let lastProperty2BorrowResult = null;
 
   document.getElementById("bp-joint").addEventListener("change", (e) => {
     document.getElementById("bp-partner-group").classList.toggle("hidden", !e.target.checked);
@@ -377,7 +379,7 @@
       grossSalaryAnnual,
       otherIncomeAnnual: parseNum(document.getElementById("bp-other-income").value),
       isInvestmentPurchase,
-      rentalIncomeWeekly: parseNum(document.getElementById("bp-rent").value),
+      rentalIncomeWeekly: isInvestmentPurchase ? parseNum(document.getElementById("bp-rent").value) : 0,
       rentalIncomeShadePct: parseNum(document.getElementById("bp-rent-shade").value) || 80,
       hasHecsDebt: document.getElementById("bp-hecs").checked,
       dependents: parseNum(document.getElementById("bp-dependents").value),
@@ -1047,6 +1049,77 @@
   // ---------------------------------------------------------------------
   // JOURNEY tab
   // ---------------------------------------------------------------------
+  // Property 2 borrowing capacity estimator — reuses the same joint
+  // borrowing-power engine as the Afford tab, crediting Property 1's
+  // projected rent at that year as additional serviceable income.
+  const jy2ToggleRow = document.getElementById("jy2-borrow-toggle-row");
+  const jy2Panel = document.getElementById("jy2-borrow-panel");
+  const jy2Chevron = document.getElementById("jy2-borrow-chevron");
+  jy2ToggleRow.addEventListener("click", () => {
+    const isHidden = jy2Panel.classList.contains("hidden");
+    jy2Panel.classList.toggle("hidden");
+    jy2Chevron.textContent = isHidden ? "⌄" : "›";
+  });
+  document.getElementById("jy2-joint").addEventListener("change", (e) => {
+    document.getElementById("jy2-partner-row").classList.toggle("hidden", !e.target.checked);
+    saveState();
+  });
+  document.getElementById("jy2-rent-credit").addEventListener("change", saveState);
+
+  document.getElementById("jy2-borrow-calc").addEventListener("click", () => {
+    const salary = parseNum(document.getElementById("jy2-salary").value);
+    if (salary <= 0) {
+      alert("Enter your projected salary first.");
+      return;
+    }
+    const isJoint = document.getElementById("jy2-joint").checked;
+    const partnerSalary = parseNum(document.getElementById("jy2-partner-salary").value);
+    const useRentCredit = document.getElementById("jy2-rent-credit").checked;
+    const rentShade = parseNum(document.getElementById("jy2-rent-shade").value) || 70;
+
+    // Project Property 1's rent forward to the purchase year, using the
+    // journey's own rent figures if already calculated, else the raw inputs.
+    const yearsUntil = parseNum(document.getElementById("jy-years").value) || 5;
+    const rentWeekly1 = parseNum(document.getElementById("jy-rent1").value) || 0;
+    const rentGrowth1 = parseNum(document.getElementById("jy-rent-growth1").value) || 0;
+    const projectedRentWeekly = rentWeekly1 * Math.pow(1 + rentGrowth1 / 100, yearsUntil);
+
+    const result = C.borrowingPower({
+      grossSalaryAnnual: salary,
+      isInvestmentPurchase: false,
+      rentalIncomeWeekly: useRentCredit ? projectedRentWeekly : 0,
+      rentalIncomeShadePct: rentShade,
+      hasHecsDebt: false,
+      dependents: 0,
+      livingExpensesMonthly: null,
+      creditCardLimitsTotal: 0,
+      personalLoanMonthly: 0,
+      otherLoanRepaymentsMonthly: 0,
+      existingLoanBalancesTotal: 0,
+      annualRatePct: parseNum(document.getElementById("jy-rate1").value) || 6.5,
+      termYears: 30,
+      partner2: isJoint && partnerSalary > 0 ? { grossSalaryAnnual: partnerSalary, otherIncomeAnnual: 0, hasHecsDebt: false } : null,
+    });
+    // Rental income doesn't run through investmentAnalysis here (this is a
+    // quick capacity estimate, not full serviceability) — add it as rough
+    // shaded income on top by re-deriving surplus with it credited.
+    lastProperty2BorrowResult = result;
+
+    document.getElementById("jy2-max-loan").textContent = fmt$(result.maxLoan);
+    const rows = [["Your net income", result.netEmploymentIncome, false]];
+    if (isJoint && result.partner2NetEmploymentIncome > 0) rows.push(["Partner's net income", result.partner2NetEmploymentIncome, false]);
+    if (useRentCredit && projectedRentWeekly > 0) rows.push([`Property 1 rent credit (${rentShade}% of ${fmt$(projectedRentWeekly)}/wk)`, projectedRentWeekly * 52 * (rentShade / 100), false]);
+    rows.push(["Living expenses", -result.livingExpenses * 12, true]);
+    document.getElementById("jy2-borrow-breakdown").innerHTML = breakdownRows(rows);
+    document.getElementById("jy2-borrow-results").classList.remove("hidden");
+  });
+
+  document.getElementById("jy2-borrow-use").addEventListener("click", () => {
+    if (!lastProperty2BorrowResult) return;
+    document.getElementById("jy-loan2").value = lastProperty2BorrowResult.maxLoan.toLocaleString("en-AU");
+    saveState();
+  });
+
   document.getElementById("jy-calc").addEventListener("click", () => {
     const price1 = parseNum(document.getElementById("jy-price1").value);
     if (price1 <= 0) {
@@ -1075,6 +1148,70 @@
       [`Usable equity (at ${document.getElementById("jy-equity-lvr").value || 80}% LVR)`, y.usableEquity, false, true],
     ]);
 
+    // 10-year projection — uses default expense assumptions (this is a
+    // planning-level view, not a full itemised cost breakdown; that's what
+    // the This Property tab is for) so the person only needs to enter price,
+    // rent and loan terms here, not every expense line again.
+    const D = R.DEFAULT_INVESTMENT;
+    const rentWeekly1 = parseNum(document.getElementById("jy-rent1").value) || 0;
+    const rentGrowth1 = parseNum(document.getElementById("jy-rent-growth1").value) || 0;
+    const extraYou = parseNum(document.getElementById("jy-extra-you").value);
+    const extraPartner = parseNum(document.getElementById("jy-extra-partner").value);
+    const combinedExtra = extraYou + extraPartner;
+    const rate1 = parseNum(document.getElementById("jy-rate1").value) || 6.5;
+    const term1 = parseNum(document.getElementById("jy-term1").value) || 30;
+    const deposit1Pct = parseNum(document.getElementById("jy-deposit1").value) || 20;
+
+    let fixedAnnualExpensesEst = 0;
+    if (rentWeekly1 > 0) {
+      const est = C.investmentAnalysis({
+        price: price1, depositPct: deposit1Pct, state: selectedState.jy, annualRatePct: rate1, loanTermYears: term1,
+        offsetBalance: 0, renovationCost: 0, miscFees: 0,
+        buildingInsuranceAnnual: D.buildingInsuranceAnnual, landlordInsuranceAnnual: D.landlordInsuranceAnnual,
+        propertyMgmtPct: D.propertyMgmtPct, leasingFeeAnnual: D.leasingFeeAnnual, vacancyWeeks: D.vacancyWeeks,
+        landTaxAnnual: D.landTaxAnnual, stratLeviesMonthly: D.stratLeviesMonthly, maintenanceMonthly: D.maintenanceMonthly,
+        otherExpensesAnnual: D.otherExpensesAnnual, lowerRentWeekly: rentWeekly1, higherRentWeekly: rentWeekly1,
+        taxRatePct: D.taxRatePct, depreciationAnnual: 0, growthCagrPct: parseNum(document.getElementById("jy-growth1").value) || 6,
+        negativeGearingQuarantined: false, buyersAgentFee: 0,
+      });
+      fixedAnnualExpensesEst = est.fixedAnnualExpenses;
+    }
+
+    const projection = C.tenYearProjection({
+      price: price1, depositPct: deposit1Pct, annualRatePct: rate1, termYears: term1,
+      growthCagrPct: parseNum(document.getElementById("jy-growth1").value) || 6,
+      rentWeekly: rentWeekly1, rentGrowthPct: rentGrowth1,
+      combinedMonthlyContribution: combinedExtra, fixedAnnualExpenses: fixedAnnualExpensesEst,
+    });
+    lastJourneyProjection = projection;
+
+    const milestoneYears = [5, 7, 10];
+    document.getElementById("jy-projection-cards").innerHTML = milestoneYears.map((yr) => {
+      const row = projection.years[yr];
+      return `
+        <div class="compare-card">
+          <div class="compare-card-header">
+            <div class="compare-card-title">Year ${yr}</div>
+          </div>
+          <div class="compare-grid">
+            <div><div class="compare-stat-label">Property value</div><div class="compare-stat-value">${fmt$(row.propertyValue)}</div></div>
+            <div><div class="compare-stat-label">Loan balance</div><div class="compare-stat-value">${fmt$(row.loanBalanceMin)}</div></div>
+            <div><div class="compare-stat-label">Usable equity</div><div class="compare-stat-value positive">${fmt$(row.usableEquity)}</div></div>
+            <div><div class="compare-stat-label">Weekly rent</div><div class="compare-stat-value">${fmt$(row.weeklyRent)}</div></div>
+          </div>
+        </div>`;
+    }).join("");
+
+    if (combinedExtra > 0) {
+      document.getElementById("jy-extra-repay-summary").innerHTML = `
+        <div class="info-note">
+          <span class="dot"></span>
+          <span>Paying ${fmt$(combinedExtra)}/month combined (vs the ${fmt$(projection.minRepaymentMonthly)} minimum) would pay off Property 1's loan in about <strong>${projection.payoffYearsExtra.toFixed(1)} years</strong> instead of ${term1}, saving roughly <strong>${fmt$(projection.interestSaved)}</strong> in interest.</span>
+        </div>`;
+    } else {
+      document.getElementById("jy-extra-repay-summary").innerHTML = "";
+    }
+
     document.getElementById("jy-deposit2").textContent = fmt$(y.totalDepositAvailable);
 
     const p2 = result.property2;
@@ -1091,6 +1228,46 @@
       breakdownRows([["Maximum price for Property 2", p2.maxPrice, false, true]]) +
       `<div class="breakdown-row"><span>Loan-to-value ratio</span><span class="amount"><span class="badge-pill ${p2LvrBand.tier}">${(p2.breakdown.lvr * 100).toFixed(0)}% LVR — ${p2LvrBand.label}</span></span></div>`;
     renderBufferNote("jy-buffer-note", p2.remainingCash);
+
+    // Sell vs Keep — compares selling Property 1 outright at Year N against
+    // the equity-release approach already computed above, at the same year.
+    document.getElementById("jy-sellkeep-year").textContent = y.years;
+    const isNewBuild1 = false; // Journey's Property 1 doesn't collect this — established is the conservative default for CGT
+    const sellResult = C.exitEstimate({
+      price: price1, depositPct: deposit1Pct, annualRatePct: rate1, loanTermYears: term1,
+      stampDuty: R.stampDuty(selectedState.jy, price1, false), otherAcquisitionCosts: 4650,
+      growthCagrPct: parseNum(document.getElementById("jy-growth1").value) || 6, yearsHeld: y.years,
+      agentCommissionPct: 2.5, legalMarketingFlat: 1500, taxRatePct: D.taxRatePct, assumedCpiPct: 2.5,
+      isNewBuild: isNewBuild1,
+    });
+    const nextStampDuty = R.stampDuty(selectedState.jy, p2.maxPrice, false);
+    const sellAvailableDeposit = Math.max(sellResult.netProceedsAfterSaleLoanAndTax - nextStampDuty, 0);
+    document.getElementById("jy-sell-breakdown").innerHTML = breakdownRows([
+      ["Estimated sale price", sellResult.salePrice, false],
+      ["Selling costs", -sellResult.sellingCostsTotal, true],
+      ["Remaining loan", -sellResult.loanBalanceAtSale, true],
+      ["Capital gains tax", -sellResult.cgtPayable, true],
+      ["Net proceeds", sellResult.netProceedsAfterSaleLoanAndTax, false],
+      [`Stamp duty on Property 2 (${selectedState.jy})`, -nextStampDuty, true],
+      ["Available for Property 2 deposit", sellAvailableDeposit, false, true],
+    ]);
+
+    document.getElementById("jy-keep-breakdown").innerHTML = breakdownRows([
+      [`Property 1 value at Year ${y.years}`, y.value, false],
+      ["Remaining loan", -y.loanBalance, true],
+      [`Usable equity released (${document.getElementById("jy-equity-lvr").value || 80}% LVR)`, y.usableEquity, false],
+      ["Plus additional savings", y.additionalSavingsByThen, false],
+      ["Available for Property 2 deposit", y.totalDepositAvailable, false, true],
+    ]);
+
+    const verdictEl = document.getElementById("jy-sellkeep-verdict");
+    const kept1FutureValue = price1 * Math.pow(1 + (parseNum(document.getElementById("jy-growth1").value) || 6) / 100, 10);
+    const keepCombinedWealthYr10 = (kept1FutureValue - C.loanBalanceAfterYears(result.property1.loan, rate1, term1, 10)) + p2.maxPrice;
+    const sellCombinedWealthYr10 = p2.maxPrice; // no Property 1 left, just whatever Property 2 becomes
+    verdictEl.className = "status-banner neutral";
+    verdictEl.textContent = sellAvailableDeposit > y.totalDepositAvailable
+      ? `Selling gives you ${fmt$(sellAvailableDeposit - y.totalDepositAvailable)} more deposit right now — but keeping means you'd still own Property 1, which by Year 10 could be worth roughly ${fmt$(kept1FutureValue)} in its own right. There's no single right answer here — it depends how much you value the bigger deposit now against staying invested.`
+      : `Keeping gives you ${fmt$(y.totalDepositAvailable - sellAvailableDeposit)} more deposit than selling would, plus you keep Property 1 itself. Selling only wins here if you specifically want to be free of the investment loan and management.`;
 
     const fhb = R.RENTVESTING_FHB_IMPACT[selectedState.jy];
     const warningEl = document.getElementById("jy-fhb-warning");
@@ -1396,6 +1573,8 @@
   const JY_FIELD_IDS = [
     "jy-price1", "jy-deposit1", "jy-rate1", "jy-term1", "jy-growth1",
     "jy-years", "jy-equity-lvr", "jy-savings", "jy-loan2",
+    "jy-rent1", "jy-rent-growth1", "jy-extra-you", "jy-extra-partner",
+    "jy2-salary", "jy2-partner-salary", "jy2-rent-shade",
   ];
   const CP_FIELD_IDS = ["cp-label", "cp-price", "cp-deposit-pct", "cp-rent", "cp-rate"];
   const CO_FIELD_IDS = ["co-price", "co-loan", "co-cash", "co-buyers-agent-pct", "co-buyers-agent-flat"];

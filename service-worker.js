@@ -1,5 +1,5 @@
 // Bump this on every deployed change so the browser detects an update.
-const CACHE_VERSION = "property-planner-v21";
+const CACHE_VERSION = "property-planner-v22";
 
 const ASSETS = [
   "./",

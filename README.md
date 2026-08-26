@@ -61,7 +61,7 @@ The app then runs offline, with its own icon, no browser chrome.
 Whenever you edit any file, bump the cache version in `service-worker.js`:
 
 ```js
-const CACHE_VERSION = "property-planner-v22"; // increment this
+const CACHE_VERSION = "property-planner-v23"; // increment this
 ```
 
 Then commit and push — GitHub Pages redeploys automatically within a minute or two. On your phone, **fully close** the app (not just background it) and reopen it to pick up the update; the service worker deliberately waits for a clean restart rather than hot-swapping mid-session.
@@ -120,6 +120,15 @@ These two tabs computed the same upfront costs slightly differently (Invest addi
 - **Mortgage tab** now recalculates live as you type the loan amount, rate or term (or change repayment type/frequency) — no need to press Calculate for a quick lookup.
 - **Joint applications**: the borrowing power panel has an "Applying with a partner?" toggle that adds a second income section. Each person's income is taxed individually — brackets, Medicare levy and HECS are all per-person, never household — then the two after-tax incomes are combined. Dependents, living expenses and debts stay as the single household figures they already were, matching how a joint application is actually assessed.
 - **Deposit savings goal** (new, under More): shows both directions of a savings plan at once — how long a given monthly amount takes to reach your target, and what monthly amount a given target date requires. Uses proper monthly-compounding math (verified against a forward month-by-month simulation), with an editable assumed interest rate defaulting to 4.5% (researched against current no-conditions savings account rates, which sit around 4.85-5.10%). Can pre-fill its target from This Property's implied deposit.
+
+### August 2026 — Journey overhaul: 10-year projection, Sell vs Keep, joint serviceability
+
+Rebuilt against a broker-provided investment model spreadsheet the user shared, after auditing every formula in it. The audit found a serious bug: every property-growth formula in the spreadsheet referenced the wrong cell (pointing at a dollar figure instead of the growth percentage), corrupting three of its six tabs — by Year 10 it showed a $600k property worth 25 undecillion dollars. Also found: a savings projection that only counted one partner's contributions, a serviceability check that computed a HECS-adjusted income figure and then didn't use it, and an "Interest Saved" figure that wasn't actually comparing interest (verified the correct figure by simulating both repayment scenarios month-by-month). None of this was carried into the app — the underlying methodology (joint income, extra repayments, milestone-year projections, sell-vs-keep, second-property serviceability with a rent credit) was sound and is what got built, using the app's own already-verified calculation engines.
+
+- **Property 1 (Journey tab)** now takes rent, rent growth, and an extra-repayments calculator (your + partner's monthly contribution)
+- **10-year projection**: property value, loan balance, and usable equity at Year 5/7/10, using correct compound growth throughout. When extra repayments are set, shows the payoff time and genuine interest saved
+- **Sell vs Keep**: compares selling Property 1 outright (using the app's exit/CGT estimate, which reflects the actual 2026 reform) against keeping it and releasing equity, at the same chosen year, with a plain-language verdict
+- **Property 2 serviceability estimator**: an income-based borrowing capacity estimate for the future home purchase, reusing the joint borrowing-power engine, with an optional credit for Property 1's projected rent at that year (lenders typically credit 70-80% of rental income toward serviceability)
 
 ## Investment cashflow assumptions
 
