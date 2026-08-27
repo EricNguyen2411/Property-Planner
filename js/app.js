@@ -83,7 +83,7 @@
   // ---------------------------------------------------------------------
   const tabButtons = document.querySelectorAll(".tab-btn");
   const screens = document.querySelectorAll(".screen");
-  const HOME_GROUP = ["home", "afford", "invest", "costs", "journey"];
+  const HOME_GROUP = ["home", "afford", "invest", "costs", "journey", "scenarios"];
   const MORE_GROUP = ["more", "mortgage", "compare", "savings", "rates"];
 
   function switchToScreen(screenId) {
@@ -134,7 +134,7 @@
   const stateSheet = document.getElementById("state-sheet");
   const stateSheetList = document.getElementById("state-sheet-list");
   let activeStateTarget = null; // 'af', 'co', 'in', 'jy' or 'cp'
-  let selectedState = { af: "NSW", co: "NSW", in: "NSW", jy: "NSW", cp: "NSW" };
+  let selectedState = { af: "NSW", co: "NSW", in: "NSW", jy: "NSW", cp: "NSW", "sc-target": "NSW" };
   const SHARED_STATE_TARGETS = ["af", "co", "jy"]; // cp intentionally excluded — different properties
 
   function renderStateSheetList() {
@@ -156,6 +156,7 @@
         }
         closeSheet();
         saveState();
+        if (typeof updateLandTaxHint === "function") updateLandTaxHint();
       });
       stateSheetList.appendChild(opt);
     });
@@ -176,6 +177,7 @@
   document.getElementById("co-state-row").addEventListener("click", () => openSheet("co"));
   document.getElementById("jy-state-row").addEventListener("click", () => openSheet("jy"));
   document.getElementById("cp-state-row").addEventListener("click", () => openSheet("cp"));
+  document.getElementById("sc-target-state-row").addEventListener("click", () => openSheet("sc-target"));
 
   // ---------------------------------------------------------------------
   // Shared property fields — price, deposit %, loan amount and interest
@@ -906,6 +908,20 @@
       document.getElementById("co-buffer-note").innerHTML = "";
     }
 
+    // Suggest parking leftover cash (beyond the recommended buffer) in the
+    // offset account, since that directly reduces the interest you pay —
+    // rather than leaving it sitting idle uncounted.
+    const offsetSuggestEl = document.getElementById("co-offset-suggest");
+    if (offsetSuggestEl) {
+      const currentOffset = parseNum(document.getElementById("in-offset").value);
+      const leftover = availableCash > 0 ? availableCash - totalCashRequired - R.RECOMMENDED_EMERGENCY_BUFFER : 0;
+      if (isInvestment && leftover > 1000 && currentOffset < leftover) {
+        offsetSuggestEl.innerHTML = `<div class="info-note"><span class="dot"></span><span>You'd have ${fmt$(leftover + R.RECOMMENDED_EMERGENCY_BUFFER)} left over beyond your purchase costs. Beyond a ${fmt$(R.RECOMMENDED_EMERGENCY_BUFFER)} buffer, parking the rest — ${fmt$(leftover)} — in your <span class="term-link" data-term="offset">offset account</span> reduces the interest you pay without locking it away. <span class="term-link" data-co-use-offset>Set offset to ${fmt$(leftover)}</span></span></div>`;
+      } else {
+        offsetSuggestEl.innerHTML = "";
+      }
+    }
+
     document.getElementById("co-results").classList.remove("hidden");
 
     if (!suppressDashboardUpdate) {
@@ -1039,7 +1055,7 @@
 
     const methodNote = isNewBuild
       ? `As a new build, you can choose the cheaper method when you sell — on these numbers that's the ${result.methodUsed} method: ${fmt$(result.cgtPayable)} in CGT.`
-      : `As an established property bought now, gains from 1 July 2027 are locked into the indexation method: ${fmt$(result.cgtPayable)} in CGT, using a ${document.getElementById("ex-cpi").value || 2.5}% inflation assumption and a 30% minimum tax rate on the real gain.`;
+      : `As an established property bought now, your gain is time-apportioned: roughly ${result.monthsPreCutover} month${result.monthsPreCutover === 1 ? "" : "s"} of it (before 1 July 2027) still gets the old 50% discount — ${fmt$(result.cgtPreCutover)} in CGT — and the remaining ${result.monthsPostCutover} month${result.monthsPostCutover === 1 ? "" : "s"} uses the new indexation method with a 30% minimum rate — ${fmt$(result.cgtPostCutover)} in CGT. Total: ${fmt$(result.cgtPayable)}.`;
     document.getElementById("ex-method-note").textContent = methodNote;
 
     document.getElementById("ex-results").classList.remove("hidden");
@@ -1289,6 +1305,139 @@
       renderHomeCards();
     }
 
+    saveState();
+  });
+
+  // ---------------------------------------------------------------------
+  // SCENARIOS tab — compares three paths to the same target home
+  // ---------------------------------------------------------------------
+  document.getElementById("sc-calc").addEventListener("click", () => {
+    const targetPriceNow = parseNum(document.getElementById("sc-target-price").value);
+    const targetGrowthPct = parseNum(document.getElementById("sc-target-growth").value) || 0;
+    const targetState = selectedState["sc-target"];
+    const borrowCapacity = parseNum(document.getElementById("sc-borrow-capacity").value);
+    const currentSavings = parseNum(document.getElementById("sc-savings").value);
+    const monthlySavings = parseNum(document.getElementById("sc-monthly-savings").value);
+    const savingsRate = parseNum(document.getElementById("sc-savings-rate").value) || 0;
+    const buffer = parseNum(document.getElementById("sc-buffer").value);
+
+    if (targetPriceNow <= 0) {
+      alert("Enter a target home price first.");
+      return;
+    }
+
+    // --- Scenario 1: buy directly ---
+    const s1 = C.directPurchaseTimeline({
+      targetPriceNow, targetGrowthPct, currentSavings, monthlySavingsRate: monthlySavings,
+      savingsInterestRatePct: savingsRate, combinedBorrowingCapacity: borrowCapacity,
+      state: targetState, isFirstHomeBuyer: false, maxYearsToCheck: 15,
+    });
+    const sc1 = document.getElementById("sc-card-1");
+    const t1 = document.getElementById("sc1-title");
+    const d1 = document.getElementById("sc1-desc");
+    sc1.classList.remove("done");
+    if (s1.achievableAtYear === 0) {
+      sc1.classList.add("done");
+      t1.textContent = "Achievable now";
+      d1.textContent = `Your combined savings and borrowing capacity already cover a ${fmt$(targetPriceNow)} home in ${targetState}.`;
+    } else if (s1.achievableAtYear != null) {
+      t1.textContent = `Achievable in about ${s1.achievableAtYear} year${s1.achievableAtYear === 1 ? "" : "s"}`;
+      d1.textContent = `By then the target will have grown to roughly ${fmt$(s1.years[s1.achievableAtYear].targetPrice)}, and your savings should cover the ${fmt$(s1.years[s1.achievableAtYear].requiredCash)} needed.`;
+    } else {
+      t1.textContent = `Not achievable within ${s1.maxYearsToCheck} years`;
+      d1.textContent = s1.gapTrend === "widening"
+        ? `The target is growing faster than you can save toward it — the gap is ${fmt$(-s1.years[s1.years.length - 1].shortfallOrSurplus)} and widening. Saving harder alone won't close it; a higher income or a different target/timeframe would.`
+        : `The gap is narrowing (currently ${fmt$(-s1.years[s1.years.length - 1].shortfallOrSurplus)}) but not fast enough to close within ${s1.maxYearsToCheck} years at this rate.`;
+    }
+
+    // --- Scenario 2: reuse the Journey tab's own inputs + calculation ---
+    const price1 = parseNum(document.getElementById("jy-price1").value);
+    const deposit1Pct = parseNum(document.getElementById("jy-deposit1").value) || 20;
+    const rate1 = parseNum(document.getElementById("jy-rate1").value) || 6.5;
+    const term1 = parseNum(document.getElementById("jy-term1").value) || 30;
+    const growth1 = parseNum(document.getElementById("jy-growth1").value) || 6;
+    const yearsUntil = parseNum(document.getElementById("jy-years").value) || 5;
+    const equityLvr = parseNum(document.getElementById("jy-equity-lvr").value) || 80;
+
+    const s2Journey = C.investmentThenHomeJourney({
+      price1, depositPct1: deposit1Pct, annualRatePct1: rate1, termYears1: term1, growthCagrPct1: growth1,
+      yearsUntilProperty2: yearsUntil, equityReleaseLVRPct: equityLvr, additionalSavingsByThen: currentSavings + monthlySavings * 12 * yearsUntil,
+      property2State: targetState, property2MaxLoan: borrowCapacity, property2IsFirstHomeBuyer: false,
+    });
+    const targetAtYear2 = targetPriceNow * Math.pow(1 + targetGrowthPct / 100, yearsUntil);
+    const sc2 = document.getElementById("sc-card-2");
+    const t2 = document.getElementById("sc2-title");
+    const d2 = document.getElementById("sc2-desc");
+    sc2.classList.remove("done");
+    const s2Achievable = s2Journey.property2.maxPrice >= targetAtYear2;
+    if (s2Achievable) sc2.classList.add("done");
+    t2.textContent = s2Achievable
+      ? `On track by Year ${yearsUntil}`
+      : `Short by ${fmt$(targetAtYear2 - s2Journey.property2.maxPrice)} at Year ${yearsUntil}`;
+    d2.textContent = `Buying Property 1 (${fmt$(price1)}) now, releasing equity in Year ${yearsUntil}, gets you to ${fmt$(s2Journey.property2.maxPrice)} — against a target that will have grown to roughly ${fmt$(targetAtYear2)}.`;
+
+    // --- Scenario 3: two investment properties ---
+    const priceB = parseNum(document.getElementById("sc-priceB").value);
+    const depositBPct = parseNum(document.getElementById("sc-depositB").value) || 20;
+    const rateB = parseNum(document.getElementById("sc-rateB").value) || 6.5;
+    const growthB = parseNum(document.getElementById("sc-growthB").value) || 8;
+
+    const s3 = C.twoPropertyJourney({
+      propertyA: { price: price1, depositPct: deposit1Pct, annualRatePct: rate1, termYears: term1, growthCagrPct: growth1 },
+      propertyB: { price: priceB, depositPct: depositBPct, annualRatePct: rateB, termYears: 30, growthCagrPct: growthB },
+      yearsUntilTarget: yearsUntil, equityReleaseLVRPct: equityLvr,
+      additionalSavingsByThen: currentSavings + monthlySavings * 12 * yearsUntil,
+      targetState, targetMaxLoan: borrowCapacity, targetIsFirstHomeBuyer: false,
+    });
+    const sc3 = document.getElementById("sc-card-3");
+    const t3 = document.getElementById("sc3-title");
+    const d3 = document.getElementById("sc3-desc");
+    sc3.classList.remove("done");
+    const s3Achievable = s3.target.maxPrice >= targetAtYear2;
+    if (s3Achievable) sc3.classList.add("done");
+    t3.textContent = s3Achievable
+      ? `On track by Year ${yearsUntil}`
+      : `Short by ${fmt$(targetAtYear2 - s3.target.maxPrice)} at Year ${yearsUntil}`;
+    d3.textContent = `Two properties (${fmt$(price1)} + ${fmt$(priceB)}) release a combined ${fmt$(s3.combinedUsableEquity)} in equity by Year ${yearsUntil}, getting you to ${fmt$(s3.target.maxPrice)}.`;
+
+    const depositA = price1 * (deposit1Pct / 100);
+    const depositBAmount = priceB * (depositBPct / 100);
+    const combinedDeposits = depositA + depositBAmount;
+    const bufferCheckEl = document.getElementById("sc3-buffer-check");
+    const leftoverBuffer = currentSavings - combinedDeposits;
+    if (leftoverBuffer >= buffer) {
+      bufferCheckEl.textContent = `${fmt$(leftoverBuffer)} left after both deposits — clears your ${fmt$(buffer)} buffer`;
+      bufferCheckEl.style.color = "var(--positive)";
+    } else {
+      bufferCheckEl.textContent = `Only ${fmt$(Math.max(leftoverBuffer, 0))} left after both deposits — below your ${fmt$(buffer)} buffer target`;
+      bufferCheckEl.style.color = "var(--negative)";
+    }
+
+    // --- Recommendation, in plain language ---
+    const verdictEl = document.getElementById("sc-recommendation");
+    verdictEl.className = "status-banner neutral";
+    if (s1.achievableAtYear === 0) {
+      verdictEl.textContent = "Scenario 1 already works — you can likely buy your target home directly, without needing an investment property first.";
+    } else if (leftoverBuffer < buffer && s3Achievable) {
+      verdictEl.textContent = `Scenario 3 gets there fastest, but it leaves your buffer thin (${fmt$(Math.max(leftoverBuffer, 0))} vs your ${fmt$(buffer)} target) — two loans and two tenancies at once is real risk. Scenario 2 is the steadier starting point; you can revisit a second property once the first has a year or so of track record and your buffer has rebuilt.`;
+    } else if (s2Achievable) {
+      verdictEl.textContent = "Scenario 2 — one investment property first — gets you to your target home by the year you've set, without the extra risk of running two loans at once.";
+    } else if (s3Achievable) {
+      verdictEl.textContent = "Scenario 2 alone falls short by your target year, but adding a second investment property (Scenario 3) closes the gap — as long as your buffer holds up.";
+    } else {
+      verdictEl.textContent = "None of the three quite get there by your target year on these numbers — try a longer timeframe, a lower target price, or growing your borrowing capacity, and recalculate.";
+    }
+
+    document.getElementById("sc-results").classList.remove("hidden");
+
+    if (!suppressDashboardUpdate) {
+      dashboardSummary.scenarios = {
+        headline: s1.achievableAtYear === 0 ? "Buy directly" : s2Achievable ? "One investment first" : s3Achievable ? "Two investments" : "Needs adjusting",
+        sub: `Target ${fmt$(targetPriceNow)} in ${targetState}`,
+      };
+      saveDashboardSummary();
+      renderHomeCards();
+    }
     saveState();
   });
 
@@ -1577,6 +1726,10 @@
     "jy2-salary", "jy2-partner-salary", "jy2-rent-shade",
   ];
   const CP_FIELD_IDS = ["cp-label", "cp-price", "cp-deposit-pct", "cp-rent", "cp-rate"];
+  const SC_FIELD_IDS = [
+    "sc-target-price", "sc-target-growth", "sc-borrow-capacity", "sc-savings",
+    "sc-monthly-savings", "sc-savings-rate", "sc-priceB", "sc-depositB", "sc-rateB", "sc-growthB", "sc-buffer",
+  ];
   const CO_FIELD_IDS = ["co-price", "co-loan", "co-cash", "co-buyers-agent-pct", "co-buyers-agent-flat"];
 
   function saveState() {
@@ -1589,6 +1742,8 @@
       JY_FIELD_IDS.forEach((id) => { jyVals[id] = document.getElementById(id).value; });
       const cpVals = {};
       CP_FIELD_IDS.forEach((id) => { cpVals[id] = document.getElementById(id).value; });
+      const scVals = {};
+      SC_FIELD_IDS.forEach((id) => { scVals[id] = document.getElementById(id).value; });
       const coVals = {};
       CO_FIELD_IDS.forEach((id) => { coVals[id] = document.getElementById(id).value; });
 
@@ -1631,6 +1786,7 @@
         },
         jy: { ...jyVals, state: selectedState.jy },
         cp: { ...cpVals, state: selectedState.cp },
+        sc: { ...scVals, state: selectedState["sc-target"] },
       };
       localStorage.setItem("property-planner-state-v1", JSON.stringify(state));
     } catch (e) { /* storage unavailable - ignore */ }
@@ -1708,6 +1864,11 @@
         selectedState.cp = s.cp.state || "NSW";
         document.getElementById("cp-state-value").innerHTML = `${selectedState.cp} <span class="chevron">›</span>`;
       }
+      if (s.sc) {
+        SC_FIELD_IDS.forEach((id) => setIfPresent(id, s.sc[id]));
+        selectedState["sc-target"] = s.sc.state || "NSW";
+        document.getElementById("sc-target-state-value").innerHTML = `${selectedState["sc-target"]} <span class="chevron">›</span>`;
+      }
     } catch (e) { /* ignore malformed state */ }
   }
   function setSeg(id, val) {
@@ -1777,7 +1938,7 @@
   // far, doubling as the starting point (shows "start here" prompts) and
   // the finishing point (shows every headline number in one place).
   // ---------------------------------------------------------------------
-  let dashboardSummary = { afford: null, property: null, journey: null };
+  let dashboardSummary = { afford: null, property: null, journey: null, scenarios: null };
   let suppressDashboardUpdate = true; // true only during the very first auto-run on load
 
   function saveDashboardSummary() {
@@ -1794,6 +1955,7 @@
     { key: "afford", screen: "afford", title: "What can you afford?", desc: "Your borrowing power and maximum purchase price." },
     { key: "property", screen: "costs", title: "This property", desc: "Full cost breakdown — plus yield and cashflow if it's an investment." },
     { key: "journey", screen: "journey", title: "The long game", desc: "When you could buy a home to live in, afterward." },
+    { key: "scenarios", screen: "scenarios", title: "Compare your paths", desc: "Buy directly, or via one or two investment properties first." },
   ];
 
   function renderHomeCards() {
@@ -1869,6 +2031,38 @@
   document.getElementById("co-price").addEventListener("input", updateSavingsTargetHint);
   document.getElementById("co-loan").addEventListener("input", updateSavingsTargetHint);
   updateSavingsTargetHint();
+
+  // Land tax threshold awareness — land value is roughly estimated as 60%
+  // of the purchase price (a common rough-order rule of thumb; the real
+  // figure comes from the state Valuer-General and varies a lot by
+  // property type). This only indicates whether land tax likely applies
+  // at all, since progressive rates above the threshold vary too much by
+  // state to responsibly compute an exact dollar figure here.
+  function updateLandTaxHint() {
+    const hintEl = document.getElementById("in-land-tax-hint");
+    if (!hintEl) return;
+    const price = parseNum(document.getElementById("co-price").value);
+    const state = selectedState.co;
+    const threshold = R.LAND_TAX_THRESHOLD[state];
+    if (!price || threshold == null) {
+      hintEl.textContent = threshold === null ? `${state} doesn't levy a broad land tax.` : "";
+      return;
+    }
+    const estimatedLandValue = price * 0.6;
+    hintEl.textContent = estimatedLandValue < threshold
+      ? `Likely $0 — estimated land value (${fmt$(estimatedLandValue)}) is under ${state}'s ${fmt$(threshold)} threshold.`
+      : `Estimated land value (${fmt$(estimatedLandValue)}) is above ${state}'s ${fmt$(threshold)} threshold — you may owe land tax. Check with the state revenue office or your accountant for the actual amount.`;
+  }
+  document.getElementById("co-price").addEventListener("input", updateLandTaxHint);
+  updateLandTaxHint();
+
+  document.getElementById("co-results").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-co-use-offset]");
+    if (!btn) return;
+    const amount = parseNum(btn.textContent);
+    document.getElementById("in-offset").value = Math.round(amount).toLocaleString("en-AU");
+    saveState();
+  });
 
   // Buyer's agent fee mode toggles (% of price vs flat $)
   wireFeeModeToggle({

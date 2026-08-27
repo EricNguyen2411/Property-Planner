@@ -325,6 +325,18 @@ const DEFAULT_INVESTMENT = {
 // property. It scales up with more properties or higher living costs.
 const RECOMMENDED_EMERGENCY_BUFFER = 15000;
 
+// ---------------------------------------------------------------------------
+// Land tax general thresholds (2026 land tax year, individual owner, land
+// value not property value — land is typically a fraction of total price).
+// Progressive rates above the threshold vary too much by state and change
+// often to responsibly hard-code here, so this is used only to indicate
+// whether land tax is likely to apply at all, not to compute an exact
+// dollar figure. NT levies no broad land tax; ACT uses a rates-based system.
+// ---------------------------------------------------------------------------
+const LAND_TAX_THRESHOLD = {
+  NSW: 1075000, VIC: 50000, QLD: 600000, SA: 833000, WA: 300000, TAS: 125000, ACT: null, NT: null,
+};
+
 const STATE_NAMES = {
   NSW: "New South Wales",
   VIC: "Victoria",
@@ -369,6 +381,7 @@ const PropRatesExports = {
   RENTVESTING_FHB_IMPACT,
   RATES_LAST_VERIFIED,
   RECOMMENDED_EMERGENCY_BUFFER,
+  LAND_TAX_THRESHOLD,
   DEFAULT_BUYERS_AGENT_PCT,
   YIELD_BANDS,
   yieldBand,

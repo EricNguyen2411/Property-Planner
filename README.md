@@ -61,7 +61,7 @@ The app then runs offline, with its own icon, no browser chrome.
 Whenever you edit any file, bump the cache version in `service-worker.js`:
 
 ```js
-const CACHE_VERSION = "property-planner-v23"; // increment this
+const CACHE_VERSION = "property-planner-v24"; // increment this
 ```
 
 Then commit and push — GitHub Pages redeploys automatically within a minute or two. On your phone, **fully close** the app (not just background it) and reopen it to pick up the update; the service worker deliberately waits for a clean restart rather than hot-swapping mid-session.
@@ -129,6 +129,15 @@ Rebuilt against a broker-provided investment model spreadsheet the user shared, 
 - **10-year projection**: property value, loan balance, and usable equity at Year 5/7/10, using correct compound growth throughout. When extra repayments are set, shows the payoff time and genuine interest saved
 - **Sell vs Keep**: compares selling Property 1 outright (using the app's exit/CGT estimate, which reflects the actual 2026 reform) against keeping it and releasing equity, at the same chosen year, with a plain-language verdict
 - **Property 2 serviceability estimator**: an income-based borrowing capacity estimate for the future home purchase, reusing the joint borrowing-power engine, with an optional credit for Property 1's projected rent at that year (lenders typically credit 70-80% of rental income toward serviceability)
+
+### August 2026 — Compare your paths, CGT time-apportionment, land tax awareness
+
+Audited a second, improved version of the user's spreadsheet — three of the four previously-found bugs were genuinely fixed (the growth-rate reference, the savings undercounting, the unused HECS adjustment), leaving one still broken (the "Interest Saved" figure still isn't computing real interest). Rather than a full rebuild, extended the app with what the spreadsheet's real underlying goal was: comparing different paths to a target home.
+
+- **Compare your paths** (new 4th Home step): puts three scenarios side by side against the same target home — buying it directly, buying one investment property first and releasing equity, or buying two. Each renders as a plain-language, colour-coded verdict (achievable now / achievable by a given year / not achievable, with the gap and whether it's closing or widening) rather than a bare number, aimed at someone genuinely new to this. Scenario 1 uses a year-by-year simulation (the target price grows exponentially while savings grow roughly linearly-plus-interest, so a simulation handles the crossing point robustly rather than assuming a closed-form shape); Scenario 3 reuses the same equity-release maths as the Journey tab, applied to two properties.
+- **Capital gains time-apportionment**: the exit/CGT estimate for an established property now splits the actual gain by real hold-time between the old 50%-discount rules (whatever portion accrues before 1 July 2027) and the new indexation/30%-minimum rules (the rest) — a more realistic approximation than treating the whole gain under one rule set. New builds are unaffected, keeping their existing choice-of-method.
+- **Land tax awareness**: rather than a bare $0 default, the Property tab now shows whether land tax likely applies at all, using current 2026 thresholds verified independently (the spreadsheet's SA figure was stale — $534k vs the actual $833k). Doesn't compute an exact dollar figure, since progressive rates above the threshold vary too much by state to responsibly hard-code.
+- **Buffer → offset suggestion**: if you'd have cash left over beyond the recommended buffer after an investment purchase, the app now suggests parking it in the offset account (which directly reduces interest) with a one-tap fill-in, instead of leaving it uncounted.
 
 ## Investment cashflow assumptions
 

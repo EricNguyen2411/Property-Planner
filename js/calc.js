@@ -616,6 +616,99 @@ function tenYearProjection({
 }
 
 // ---------------------------------------------------------------------------
+// Scenario 1 — buying the target home directly, now or later, with no
+// investment property in between. Simulates year by year (not a closed-form
+// solve) since the target price grows exponentially while savings grow
+// roughly linearly-plus-interest — those two curves can cross once, never,
+// or (rarely, with unusual inputs) more than once, and a simulation handles
+// all of those robustly without assuming a particular shape in advance.
+// ---------------------------------------------------------------------------
+function directPurchaseTimeline({
+  targetPriceNow,
+  targetGrowthPct,
+  currentSavings,
+  monthlySavingsRate,
+  savingsInterestRatePct = 0,
+  combinedBorrowingCapacity,
+  state,
+  isFirstHomeBuyer = false,
+  maxYearsToCheck = 15,
+}) {
+  const monthlyRate = savingsInterestRatePct / 100 / 12;
+  const years = [];
+  let achievableAtYear = null;
+  let savingsBalance = currentSavings;
+
+  for (let year = 0; year <= maxYearsToCheck; year++) {
+    if (year > 0) {
+      for (let m = 0; m < 12; m++) {
+        savingsBalance = savingsBalance * (1 + monthlyRate) + monthlySavingsRate;
+      }
+    }
+    const targetPrice = targetPriceNow * Math.pow(1 + targetGrowthPct / 100, year);
+    const loanAmount = Math.min(combinedBorrowingCapacity, targetPrice);
+    const costs = upfrontCosts({ state, price: targetPrice, isFirstHomeBuyer, loanAmount, lmiWaived: false });
+    const shortfallOrSurplus = savingsBalance - costs.totalCashRequired;
+    years.push({ year, targetPrice, requiredCash: costs.totalCashRequired, availableSavings: savingsBalance, shortfallOrSurplus });
+    if (achievableAtYear == null && shortfallOrSurplus >= 0) achievableAtYear = year;
+  }
+
+  const last = years[years.length - 1];
+  const secondLast = years[years.length - 2];
+  const gapTrend = achievableAtYear == null && secondLast
+    ? (last.shortfallOrSurplus > secondLast.shortfallOrSurplus ? "closing" : "widening")
+    : null;
+
+  return { years, achievableAtYear, gapTrend, maxYearsToCheck };
+}
+
+// ---------------------------------------------------------------------------
+// Scenario 3 — two investment properties, then release combined equity to
+// fund the target home. Mirrors investmentThenHomeJourney's single-property
+// logic but sums usable equity across two properties bought today.
+// ---------------------------------------------------------------------------
+function twoPropertyJourney({
+  propertyA,
+  propertyB,
+  yearsUntilTarget,
+  equityReleaseLVRPct,
+  additionalSavingsByThen,
+  targetState,
+  targetMaxLoan,
+  targetIsFirstHomeBuyer,
+}) {
+  function snapshotAt(p, years) {
+    const loanAmount = p.price * (1 - p.depositPct / 100);
+    const value = p.price * Math.pow(1 + p.growthCagrPct / 100, years);
+    const loanBalance = loanBalanceAfterYears(loanAmount, p.annualRatePct, p.termYears, years);
+    const usableEquity = Math.max(value * (equityReleaseLVRPct / 100) - loanBalance, 0);
+    return { price: p.price, loanAmount, value, loanBalance, usableEquity };
+  }
+
+  const a = snapshotAt(propertyA, yearsUntilTarget);
+  const b = snapshotAt(propertyB, yearsUntilTarget);
+  const combinedUsableEquity = a.usableEquity + b.usableEquity;
+  const totalDepositAvailable = combinedUsableEquity + additionalSavingsByThen;
+
+  const targetResult = solveMaxPropertyPrice({
+    maxLoanAmount: targetMaxLoan,
+    availableCash: totalDepositAvailable,
+    state: targetState,
+    isFirstHomeBuyer: targetIsFirstHomeBuyer,
+    lmiWaived: false,
+  });
+
+  return {
+    years: yearsUntilTarget,
+    propertyA: a,
+    propertyB: b,
+    combinedUsableEquity,
+    totalDepositAvailable,
+    target: targetResult,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Investment-then-home journey: property 1 (investment, bought now) grows in
 // value, some of that growth becomes usable equity via a later refinance,
 // which — combined with any additional cash saved — funds the deposit on
@@ -695,6 +788,7 @@ function exitEstimate({
   taxRatePct,
   assumedCpiPct,
   isNewBuild,
+  monthsHeldBeforeCutover = null, // for testing; defaults to computing from today's real date
 }) {
   const loanAmount = price * (1 - depositPct / 100);
   const salePrice = price * Math.pow(1 + growthCagrPct / 100, yearsHeld);
@@ -703,9 +797,11 @@ function exitEstimate({
 
   const loanBalanceAtSale = loanBalanceAfterYears(loanAmount, annualRatePct, loanTermYears, yearsHeld);
 
-  // Old rules: 50% discount on the nominal gain (only meaningful if held > 12 months)
   const nominalGain = salePrice - sellingCostsTotal - costBase;
   const heldOverTwelveMonths = yearsHeld >= 1;
+  const totalHoldMonths = Math.round(yearsHeld * 12);
+
+  // Old rules: 50% discount on the nominal gain (only meaningful if held > 12 months)
   const taxableGainOld = nominalGain > 0 ? nominalGain * (heldOverTwelveMonths ? 0.5 : 1) : 0;
   const cgtOld = taxableGainOld * (taxRatePct / 100);
 
@@ -715,10 +811,40 @@ function exitEstimate({
   const effectiveRateNew = Math.max(taxRatePct / 100, 0.30);
   const cgtNew = indexedGain > 0 ? indexedGain * effectiveRateNew : 0;
 
-  // New builds get to choose whichever is cheaper; established properties
-  // bought now are locked into the new rules for any gain from 1 July 2027.
-  const cgtPayable = isNewBuild ? Math.min(cgtOld, cgtNew) : cgtNew;
-  const methodUsed = isNewBuild ? (cgtOld <= cgtNew ? "old (50% discount)" : "new (indexation)") : "new (indexation)";
+  let cgtPayable, methodUsed, monthsPreCutover, monthsPostCutover, cgtPreCutover, cgtPostCutover;
+
+  if (isNewBuild) {
+    // New builds keep a genuine choice of method for the WHOLE gain, at sale time.
+    cgtPayable = Math.min(cgtOld, cgtNew);
+    methodUsed = cgtOld <= cgtNew ? "old (50% discount)" : "new (indexation)";
+  } else {
+    // Established properties bought after 12 May 2026: the gain is time-
+    // apportioned — the old 50%-discount rules apply to whatever portion
+    // accrues before 1 July 2027, and the new indexation/30%-minimum rules
+    // apply to the rest, based on actual months held in each regime. This
+    // is a more realistic approximation than treating the whole gain under
+    // one rule set, though the ATO's precise apportionment mechanics
+    // weren't finalised when this was built — see the caveat shown with it.
+    const cutover = new Date(2027, 6, 1); // 1 July 2027
+    const now = new Date();
+    const defaultMonthsToCutover = Math.max(0, (cutover.getFullYear() - now.getFullYear()) * 12 + (cutover.getMonth() - now.getMonth()));
+    const monthsToCutover = monthsHeldBeforeCutover != null ? monthsHeldBeforeCutover : defaultMonthsToCutover;
+    monthsPreCutover = Math.max(0, Math.min(totalHoldMonths, monthsToCutover));
+    monthsPostCutover = totalHoldMonths - monthsPreCutover;
+
+    const gainPreCutover = totalHoldMonths > 0 ? nominalGain * (monthsPreCutover / totalHoldMonths) : 0;
+    // Post-cutover portion uses the INDEXED gain (new rules genuinely index
+    // the cost base for inflation) — using the nominal gain here would
+    // silently drop the indexation benefit for established properties.
+    const gainPostCutover = totalHoldMonths > 0 ? indexedGain * (monthsPostCutover / totalHoldMonths) : 0;
+
+    const taxableGainPre = gainPreCutover > 0 ? gainPreCutover * (heldOverTwelveMonths ? 0.5 : 1) : 0;
+    cgtPreCutover = taxableGainPre * (taxRatePct / 100);
+    cgtPostCutover = gainPostCutover > 0 ? gainPostCutover * effectiveRateNew : 0;
+
+    cgtPayable = cgtPreCutover + cgtPostCutover;
+    methodUsed = monthsPostCutover === 0 ? "old (50% discount — sold before 1 July 2027)" : "time-apportioned (old rules pre-2027, new rules after)";
+  }
 
   const netProceedsAfterSaleLoanAndTax = salePrice - sellingCostsTotal - loanBalanceAtSale - cgtPayable;
 
@@ -734,6 +860,10 @@ function exitEstimate({
     cgtNew,
     cgtPayable,
     methodUsed,
+    monthsPreCutover,
+    monthsPostCutover,
+    cgtPreCutover,
+    cgtPostCutover,
     netProceedsAfterSaleLoanAndTax,
   };
 }
@@ -752,6 +882,8 @@ const PropCalcExports = {
   loanBalanceWithFixedPayment,
   tenYearProjection,
   investmentThenHomeJourney,
+  directPurchaseTimeline,
+  twoPropertyJourney,
   exitEstimate,
   FREQUENCIES,
 };

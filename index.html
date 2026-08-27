@@ -478,7 +478,10 @@
           <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="in-vacancy" placeholder="1.5" style="text-align:right" value="1.5"><span>wks</span></div>
         </div>
         <div class="row">
-          <span class="row-label">Land tax</span>
+          <div>
+            <div class="row-label">Land tax</div>
+            <div class="row-sublabel" id="in-land-tax-hint"></div>
+          </div>
           <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="in-land-tax" placeholder="0" value="0"><span>/yr</span></div>
         </div>
         <div class="row">
@@ -581,6 +584,7 @@
       <div class="breakdown hidden" id="co-breakdown"></div>
       <div id="co-status-wrap"><div class="status-banner" id="co-status"></div></div>
       <div id="co-buffer-note"></div>
+      <div id="co-offset-suggest"></div>
 
       <div id="co-investment-results" class="hidden">
         <div class="scenario-toggle" id="in-scenario-toggle">
@@ -867,6 +871,134 @@
         <span>This assumes you can refinance Property 1 up to your chosen LVR and that a lender approves the new loan — equity release and a second loan both depend on serviceability at the time, not just the numbers here. Treat this as a directional plan, not a guarantee.</span>
       </div>
       <button class="btn-primary guided-continue-btn" id="jy-guided-continue">View my summary ✓</button>
+    </div>
+  </section>
+
+  <!-- ===================== SCENARIOS TAB ===================== -->
+  <section id="screen-scenarios" class="screen">
+    <button class="back-to-home-link" data-back-home>← Back to your plan</button>
+    <div class="large-title">Compare your paths</div>
+    <p class="screen-subtitle">Three ways to get to your target home — buy it directly, buy one investment property first, or two. See what's actually possible and when.</p>
+
+    <div class="eyebrow">Your target home</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Target price today</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="sc-target-price" placeholder="1,000,000" value="1,000,000"></div>
+      </div>
+      <div class="row tappable" id="sc-target-state-row">
+        <span class="row-label">State / territory</span>
+        <span class="row-value" id="sc-target-state-value">NSW <span class="chevron">›</span></span>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Market growth rate</div>
+          <div class="row-sublabel">How fast that market is rising</div>
+        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="sc-target-growth" placeholder="7" value="7" style="text-align:right"><span>% p.a.</span></div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Your combined position</div>
+    <div class="group">
+      <div class="row">
+        <div>
+          <div class="row-label">Combined borrowing capacity</div>
+          <div class="row-sublabel">From the Afford tab, or your own estimate</div>
+        </div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="sc-borrow-capacity" placeholder="850,000" value="850,000"></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Combined current savings</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="sc-savings" placeholder="180,000" value="180,000"></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Combined monthly savings</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="sc-monthly-savings" placeholder="3,750" value="3,750"></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Assumed savings interest</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="sc-savings-rate" placeholder="4.5" value="4.5" style="text-align:right"><span>% p.a.</span></div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Property 2 — for the two-property scenario</div>
+    <p class="screen-subtitle" style="margin-top:-4px;">Property 1 uses whatever you've already entered on the Journey tab.</p>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Purchase price</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="sc-priceB" placeholder="450,000" value="450,000"></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Deposit</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="sc-depositB" placeholder="20" value="20" style="text-align:right"><span>%</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Interest rate</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="sc-rateB" placeholder="6.64" value="6.64" style="text-align:right"><span>% p.a.</span></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Growth rate</div>
+          <div class="row-sublabel">Can differ from Property 1's</div>
+        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="sc-growthB" placeholder="9" value="9" style="text-align:right"><span>% p.a.</span></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <div class="row-label">Combined buffer to keep aside</div>
+        <div class="row-sublabel">Not counted toward any deposit</div>
+      </div>
+      <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="sc-buffer" placeholder="80,000" value="80,000"></div>
+    </div>
+
+    <button class="btn-primary" id="sc-calc">Compare my scenarios</button>
+
+    <div id="sc-results" class="hidden">
+      <div class="eyebrow">Scenario 1 — buy directly, no investment first</div>
+      <div class="story-card" id="sc-card-1">
+        <div class="story-card-header">
+          <div class="story-card-number">1</div>
+          <div class="story-card-body">
+            <div class="story-card-title" id="sc1-title"></div>
+            <div class="story-card-desc" id="sc1-desc"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="eyebrow">Scenario 2 — one investment property first</div>
+      <div class="story-card" id="sc-card-2">
+        <div class="story-card-header">
+          <div class="story-card-number">2</div>
+          <div class="story-card-body">
+            <div class="story-card-title" id="sc2-title"></div>
+            <div class="story-card-desc" id="sc2-desc"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="eyebrow">Scenario 3 — two investment properties first</div>
+      <div class="story-card" id="sc-card-3">
+        <div class="story-card-header">
+          <div class="story-card-number">3</div>
+          <div class="story-card-body">
+            <div class="story-card-title" id="sc3-title"></div>
+            <div class="story-card-desc" id="sc3-desc"></div>
+          </div>
+        </div>
+      </div>
+      <div class="row" style="padding:14px 4px;">
+        <span class="row-label">Buffer check (Scenario 3)</span>
+        <span class="row-value" id="sc3-buffer-check"></span>
+      </div>
+
+      <div class="status-banner neutral" id="sc-recommendation"></div>
+      <div class="info-note">
+        <span class="dot"></span>
+        <span>These are directional estimates built from your own assumptions — market growth, savings rate and borrowing capacity are all guesses about the future, and the further out a scenario reaches, the less reliable the guess. Scenario 3 in particular concentrates risk (two loans, two tenancies) — read the buffer check above before treating it as the easy win.</span>
+      </div>
     </div>
   </section>
 
