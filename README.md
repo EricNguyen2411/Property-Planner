@@ -1,173 +1,88 @@
-# Property Planner — Australian Property Affordability Calculator
+# Property Planner
 
-A PWA that works backwards from your actual finances — maximum loan and savings — to your real maximum property price, after stamp duty, LMI and every other upfront cost. Built as a step-by-step plan rather than a set of standalone calculators, so it stays useful even if you've never done this before.
+A property affordability and strategy planner, built around one real question: **what's actually possible, and what's the next step?**
+
+This is a from-scratch rebuild of an earlier version of the app. The previous version grew by bolting features onto whatever existed the session before — the clearest symptom was that combined income and savings were entered in two different places that didn't talk to each other. This rebuild starts from a proper plan instead: one canonical place for your financial position, everything else reads from it.
 
 ## Navigation
 
-The app opens to **Home** — a dashboard of 3 steps, in order: Afford → This Property → Journey. Each card shows either "start this step" or, once calculated, the headline result right there on the card. It's both your starting point and your finishing point — the same screen that nudges you through step one shows your full picture once you're done. A "Continue →" button at the end of each step carries your numbers into the next one automatically, and price/deposit/loan amount/interest rate/state now stay live-synced across every screen that uses them — edit any one, anywhere, and the others update immediately.
+Four steps, in order, plus a secondary tools menu.
 
-**More** (the second tab) holds the tools you'll dip into occasionally rather than step through in order: the mortgage calculator, property comparison, and the rates/glossary/buying-guide reference.
+1. **Your Position** — combined income (you + a partner, if applying jointly), debts, current savings, monthly savings rate. Calculated once here; every other screen uses these numbers automatically. Each person's income is taxed individually (brackets, Medicare levy and HECS are all per-person, never household) then combined — that's how a joint application is actually assessed.
+2. **Compare Your Paths** — the centrepiece: buy your target home directly, buy one investment property first and release equity, or buy two. Each path renders as a plain-language, colour-coded verdict rather than a bare number. Reads borrowing capacity and savings straight from Your Position — no re-entry.
+3. **This Property** — full upfront cost breakdown for a specific property, plus an "Is this an investment?" toggle that reveals rental yield, cashflow before/after tax, and growth projections underneath the identical cost breakdown (the upfront-cost formula is the same in both modes — investment mode only adds analysis on top).
+4. **Long-Term Plan** — a 10-year projection (property value, loan balance, usable equity at Year 5/7/10), a Sell vs Keep comparison, an extra-repayments calculator, and Property 2 serviceability with an optional credit for Property 1's projected rent. Property 1's details flow forward automatically from Compare Your Paths.
 
-- **Afford** — enter your max loan + savings, get your real maximum purchase price. Includes an optional "estimate my borrowing power from income" panel: salary, other income, rental income (if buying an investment), HECS/HELP, dependents, living expenses and existing debts, run through real FY2026-27 tax brackets and the APRA 3% serviceability buffer to estimate your maximum loan
-- **This Property** — full upfront cost breakdown for a specific property (deposit, stamp duty, LMI, buyer's agent fee, renovation, misc fees) plus a "can I afford this" check, always shown. Switch on **"Is this an investment?"** to add rental yield, cashflow before/after tax across a lower- and higher-rent scenario, 5/10-year growth projections, and an exit/sale (capital gains tax) estimate — including a New Build / Established toggle reflecting the 2026 Budget's negative gearing reform (established properties bought now lose the ability to offset losses against salary from FY2027-28 — new builds are exempt). The upfront-cost total is identical whichever mode you're in — investment mode only adds the income/tax analysis on top, it doesn't change how the base cost is calculated
-- **Journey** — for buying an investment property now and a home to live in later: models Property 1's equity growth, how much of it you could release to fund Property 2's deposit, warns about cross-collateralisation, and flags the state-specific impact on first-home-buyer stamp duty relief and the federal First Home Guarantee
-- Afford, This Property and Journey all flag it if what you'd have left over falls short of a commonly-recommended emergency buffer
-- **Mortgage** (under More) — repayments, total interest, payoff date, extra repayments, offset, and a rate stress test showing your repayment from -1% to +3% (the buffer banks assess you at)
-- **Compare** (under More) — save a few real properties side by side (price, deposit, total cash required, yield, cashflow) with a "best cashflow" highlight
-- **Rates** (under More) — every stamp duty / LMI / fee assumption the app uses, editable, with a last-verified date, a step-by-step buying process guide, and a full glossary of every term used in the app
-- **Glossary** — tap any dotted-underline term anywhere in the app (Stamp duty, LMI, LVR, Negative gearing, Yield, DTI, and 15 more) for a plain-English explanation in a bottom sheet
-- A first-run welcome screen explains the Home dashboard — reopen it anytime from Rates
-- Light, dark and system theme
-- Installable to your home screen, works fully offline after first load
-- All data stays on your device (localStorage only — nothing is sent anywhere)
+**More** (second tab): Mortgage repayments & stress test (updates live as you type — no need to press Calculate for a quick lookup), Compare Properties (save real listings side by side), Deposit Savings Goal (shows both "how long will this take" and "what do I need to save monthly" at once), and Rates, Glossary & Buying Guide.
+
+## What's reused vs rebuilt
+
+- `js/calc.js`, `js/rates.js`, `js/tax.js` — **unchanged**. These have been through multiple rounds of real bug-hunting across the app's history (stamp duty bracket errors, a capital-gains time-apportionment fix, joint-income tax modelling) and rebuilding them would only reintroduce risk for no benefit.
+- `index.html`, `js/app.js` — **rebuilt from a clean plan**, eliminating the duplicate income/savings entry and reordering the narrative so Compare Your Paths is the second step, not a bolted-on afterthought.
+
+## Verified against a real spreadsheet audit
+
+This rebuild incorporates the findings from auditing two versions of a broker-style investment-property spreadsheet the app is meant to replace. Found and fixed in the source spreadsheet (not carried into the app): a workbook-wide cell-reference bug that made every growth calculation wrong by many orders of magnitude, a savings projection that only counted one partner's contribution, and an "Interest Saved" figure that wasn't actually comparing interest. The app's own capital-gains estimate improves on the spreadsheet's flat post-2027 treatment by time-apportioning the actual gain between the old 50%-discount rules and the new indexation rules, based on real hold time.
 
 ## Step 1 — Try it locally (optional)
-
-Open `index.html` directly in a browser, or serve the folder locally:
 
 ```
 cd property-planner
 python3 -m http.server 8000
 ```
-
-Then visit `http://localhost:8000`.
+Open `http://localhost:8000` in a browser.
 
 ## Step 2 — Deploy to GitHub Pages (free hosting)
 
-1. Create a new **public** GitHub repo (e.g. `property-planner`).
-2. From inside this folder:
-   ```
-   git init
-   git add .
-   git commit -m "property planner app"
-   git branch -M main
-   git remote add origin https://github.com/YOUR_USERNAME/property-planner.git
-   git push -u origin main
-   ```
-3. GitHub repo → **Settings → Pages** → Source: **Deploy from a branch** → `main`, `/ (root)` → Save.
-4. After a minute or two: `https://YOUR_USERNAME.github.io/property-planner/`
+1. Create a new GitHub repository and push this folder's contents to it.
+2. In the repo, go to **Settings → Pages**.
+3. Under "Build and deployment", set **Source** to "Deploy from a branch", branch `main`, folder `/ (root)`.
+4. Save. Your app will be live at `https://<your-username>.github.io/<repo-name>/` within a minute or two.
 
 ## Step 3 — Install it on your phone
 
-Open the URL from Step 2 on your phone in Safari (iOS) or Chrome (Android), then:
+Open the GitHub Pages URL in Safari (iOS) or Chrome (Android), then:
+- **iOS**: tap the Share icon → "Add to Home Screen"
+- **Android**: tap the ⋮ menu → "Add to Home screen" or "Install app"
 
-- **iOS Safari**: Share button → Add to Home Screen
-- **Android Chrome**: ⋮ menu → Add to Home screen / Install app
-
-The app then runs offline, with its own icon, no browser chrome.
+It'll behave like a native app — full screen, works offline after the first load.
 
 ## Updating after changes
 
-Whenever you edit any file, bump the cache version in `service-worker.js`:
-
-```js
-const CACHE_VERSION = "property-planner-v24"; // increment this
-```
-
-Then commit and push — GitHub Pages redeploys automatically within a minute or two. On your phone, **fully close** the app (not just background it) and reopen it to pick up the update; the service worker deliberately waits for a clean restart rather than hot-swapping mid-session.
+1. Edit the files, bump `CACHE_VERSION` in `service-worker.js`.
+2. Push the changes to your GitHub repo (Pages redeploys automatically).
+3. On your phone, fully close the app (swipe it away, don't just background it) and reopen it. A new service worker version waits until every open instance is closed before taking over, to avoid a disruptive mid-session update.
 
 ## Keeping the rates current
 
-Stamp duty brackets, first-home-buyer thresholds and LMI premiums are set by state governments and lenders, and change — sometimes every financial year. All of them live in `js/rates.js`, clearly labelled and commented, with a `RATES_LAST_VERIFIED` date at the top. If your state revenue office publishes new figures, that's the one file to update. The **Rates** tab in the app itself also lists the default upfront costs as editable fields, and shows the first-home-buyer concession notes for every state, so discrepancies are easy to spot.
-
-This is a personal planning tool, not financial or legal advice — always confirm exact figures with your state revenue office, lender, or conveyancer before relying on them.
-
-### August 2026 audit
-
-A full pass was done checking every calculation and every state's figures against fresh sources. Four real issues were found and fixed:
-- NSW's top stamp duty bracket had a $1,000 transcription error (base should chain to $194,904, not $195,904) — only affects properties over $3.87M
-- ACT and NT's "flat rate on total value" top brackets could, in rare edge cases, make stamp duty *decrease* for a more expensive property — fixed with a monotonicity guard on ACT, and NT was missing its middle 5.75% tier ($3M–$5M) entirely
-- ACT's Home Buyer Concession Scheme was shown with its old $1,020,000 price cap — the cap (and the income test) were actually removed from 1 July 2026, making it Australia's first uncapped stamp duty exemption
-
-All four were edge cases unlikely to affect a typical first-time buyer, except the ACT fix, which matters for any ACT purchase regardless of price.
-
-### August 2026 navigation redesign
-
-The app was rebuilt around a Home dashboard instead of a flat row of tabs. Every calculation engine was left untouched — this was purely a navigation and information-architecture change, re-verified against the full calculation regression suite afterward to confirm nothing broke.
-
-### August 2026 — buyer's agent costs & yield benchmarks
-
-Added an optional buyer's agent fee (Costs and Invest tabs, toggle-on, defaults to 2% of price — typical range researched at 1.5-3%, or a flat $8,000-$30,000). Also added a small "moving costs" default ($1,500) to the standard upfront cost list, since it's a commonly-forgotten line item — this modestly reduces every affordability calculation's max price versus before, which is intentional and correct, not a bug. Yield now shows a colour-coded benchmark badge (Low / Solid / Strong / Very high) based on researched national gross-yield bands, with an explicit caveat that "good" varies hugely by location and property type.
-
-### August 2026 — live dollar readouts and flat-fee option
-
-Every deposit % field (Invest, Journey, Compare) now shows a live "≈ $X" readout under the label, updating as you type either the price or the percentage — no need to press Calculate to see what a percentage actually means in dollars. The buyer's agent fee (Costs and Invest tabs) now has a % of price / Flat $ toggle, since not every buyer's agent charges a percentage.
-
-### August 2026 — full audit and red/amber/green warnings
-
-A second full audit re-confirmed every previous fix was still intact, then added:
-- **Mortgage stress warning** (Mortgage tab) — repayments as a percentage of your gross income, benchmarked against the standard Australian "mortgage stress" thresholds (30% = stress, 40%+ = severe, both well-established figures used by banks, the RBA and researchers). Deliberately uses your salary/other income only, never the property's own not-yet-earned rent, so it can't optimistically justify itself. If no income has been entered yet, it shows a neutral prompt rather than guessing.
-- **LVR badges** (Afford, Costs, Invest, Journey) — colour-coded loan-to-value ratio wherever a loan and price are both known: green under 80% (no LMI), amber 80-95% (LMI applies / fewer lenders), red above that (above typical lending limits).
-
-### August 2026 — full persistence
-
-Previously, several fields didn't survive closing and reopening the app: the buyer's agent fee toggle/amount on both Costs and Invest, the Invest tab's New Build/Established selector, everything on the Journey and Compare tabs, and the whole borrowing-power income panel. All of it now saves and restores correctly, matched to the exact form state you left it in (including which buyer's agent fee mode — % or flat $ — was selected).
-
-### August 2026 — live shared property fields
-
-Property price, deposit %, loan amount, interest rate and state/territory now stay in sync live across the Invest, Costs, Journey (Property 1) and Mortgage tabs — not just when you use the "Continue" buttons, but the moment you edit any of them, in any order, from any screen. Price/deposit %/loan amount are a three-variable relationship: editing any one recomputes the other two (e.g. changing the loan amount on Costs recalculates the deposit % shown on Invest and Journey). Compare is deliberately excluded, since each saved entry there represents a different property. A brand-new install seeds this baseline from the Invest tab's defaults, so every screen agrees with every other one from the very first load rather than each showing an unrelated default price.
-
-### August 2026 — show your working
-
-The Invest tab's "Total capital required" now has a "Show calculation" toggle underneath it, revealing the exact itemised sum (deposit + stamp duty + LMI + buyer's agent fee + renovation + misc fees + other costs = total) — collapsed by default to keep the hero number clean, one tap away when you want to check the arithmetic yourself. "Other purchase costs" (everywhere it appears — Afford, Costs, Invest, Journey) and "Misc fees" (Invest) now both show a small caption explaining what's actually in them, instead of being an opaque single number.
-
-### August 2026 — Invest and Costs merged
-
-These two tabs computed the same upfront costs slightly differently (Invest additionally counted renovation and misc fees, Costs didn't), which meant identical inputs could show two different totals — confusing, and no longer defensible once price/loan/deposit started syncing live between them. They're now one screen, "This Property," with an "Is this an investment?" toggle: off behaves like the old Costs tab, on reveals the rental/yield/tax/CGT sections underneath the exact same cost breakdown. The upfront-cost formula is now identical in both modes — investment mode only adds analysis on top, it never changes the base total. Home's dashboard and the Continue-button chain were both updated to match (3 steps instead of 4: Afford → This Property → Journey).
-
-### August 2026 — quick mortgage, joint applications, deposit savings goal
-
-- **Mortgage tab** now recalculates live as you type the loan amount, rate or term (or change repayment type/frequency) — no need to press Calculate for a quick lookup.
-- **Joint applications**: the borrowing power panel has an "Applying with a partner?" toggle that adds a second income section. Each person's income is taxed individually — brackets, Medicare levy and HECS are all per-person, never household — then the two after-tax incomes are combined. Dependents, living expenses and debts stay as the single household figures they already were, matching how a joint application is actually assessed.
-- **Deposit savings goal** (new, under More): shows both directions of a savings plan at once — how long a given monthly amount takes to reach your target, and what monthly amount a given target date requires. Uses proper monthly-compounding math (verified against a forward month-by-month simulation), with an editable assumed interest rate defaulting to 4.5% (researched against current no-conditions savings account rates, which sit around 4.85-5.10%). Can pre-fill its target from This Property's implied deposit.
-
-### August 2026 — Journey overhaul: 10-year projection, Sell vs Keep, joint serviceability
-
-Rebuilt against a broker-provided investment model spreadsheet the user shared, after auditing every formula in it. The audit found a serious bug: every property-growth formula in the spreadsheet referenced the wrong cell (pointing at a dollar figure instead of the growth percentage), corrupting three of its six tabs — by Year 10 it showed a $600k property worth 25 undecillion dollars. Also found: a savings projection that only counted one partner's contributions, a serviceability check that computed a HECS-adjusted income figure and then didn't use it, and an "Interest Saved" figure that wasn't actually comparing interest (verified the correct figure by simulating both repayment scenarios month-by-month). None of this was carried into the app — the underlying methodology (joint income, extra repayments, milestone-year projections, sell-vs-keep, second-property serviceability with a rent credit) was sound and is what got built, using the app's own already-verified calculation engines.
-
-- **Property 1 (Journey tab)** now takes rent, rent growth, and an extra-repayments calculator (your + partner's monthly contribution)
-- **10-year projection**: property value, loan balance, and usable equity at Year 5/7/10, using correct compound growth throughout. When extra repayments are set, shows the payoff time and genuine interest saved
-- **Sell vs Keep**: compares selling Property 1 outright (using the app's exit/CGT estimate, which reflects the actual 2026 reform) against keeping it and releasing equity, at the same chosen year, with a plain-language verdict
-- **Property 2 serviceability estimator**: an income-based borrowing capacity estimate for the future home purchase, reusing the joint borrowing-power engine, with an optional credit for Property 1's projected rent at that year (lenders typically credit 70-80% of rental income toward serviceability)
-
-### August 2026 — Compare your paths, CGT time-apportionment, land tax awareness
-
-Audited a second, improved version of the user's spreadsheet — three of the four previously-found bugs were genuinely fixed (the growth-rate reference, the savings undercounting, the unused HECS adjustment), leaving one still broken (the "Interest Saved" figure still isn't computing real interest). Rather than a full rebuild, extended the app with what the spreadsheet's real underlying goal was: comparing different paths to a target home.
-
-- **Compare your paths** (new 4th Home step): puts three scenarios side by side against the same target home — buying it directly, buying one investment property first and releasing equity, or buying two. Each renders as a plain-language, colour-coded verdict (achievable now / achievable by a given year / not achievable, with the gap and whether it's closing or widening) rather than a bare number, aimed at someone genuinely new to this. Scenario 1 uses a year-by-year simulation (the target price grows exponentially while savings grow roughly linearly-plus-interest, so a simulation handles the crossing point robustly rather than assuming a closed-form shape); Scenario 3 reuses the same equity-release maths as the Journey tab, applied to two properties.
-- **Capital gains time-apportionment**: the exit/CGT estimate for an established property now splits the actual gain by real hold-time between the old 50%-discount rules (whatever portion accrues before 1 July 2027) and the new indexation/30%-minimum rules (the rest) — a more realistic approximation than treating the whole gain under one rule set. New builds are unaffected, keeping their existing choice-of-method.
-- **Land tax awareness**: rather than a bare $0 default, the Property tab now shows whether land tax likely applies at all, using current 2026 thresholds verified independently (the spreadsheet's SA figure was stale — $534k vs the actual $833k). Doesn't compute an exact dollar figure, since progressive rates above the threshold vary too much by state to responsibly hard-code.
-- **Buffer → offset suggestion**: if you'd have cash left over beyond the recommended buffer after an investment purchase, the app now suggests parking it in the offset account (which directly reduces interest) with a one-tap fill-in, instead of leaving it uncounted.
+Every stamp duty bracket, LMI band, and default assumption lives in `js/rates.js`, with a `RATES_LAST_VERIFIED` date. All 8 states/territories' stamp duty brackets have been individually audited against official state revenue office figures. Check and update this periodically — brackets, thresholds and concessions change.
 
 ## Investment cashflow assumptions
 
-The Invest tab separates the tax-deductible interest portion of a loan repayment from the non-deductible principal portion when estimating your after-tax cashflow (a common simplification error in flat spreadsheets is to treat the whole P&I repayment as deductible, which overstates any negative-gearing refund). It doesn't model entity structure (joint ownership, trusts, company ownership) — enter your own effective marginal tax rate instead. It also reflects the 2026 Budget's negative-gearing reform: an established property bought now can't offset a rental loss against your salary from FY2027-28 onward (new builds remain exempt) — select the right property type on the Invest tab for an accurate after-tax figure. This isn't tax advice; check your numbers with an accountant before relying on them.
-
-The exit/sale estimate on the same tab shows two bounding scenarios (the old 50% CGT discount and the new post-1-July-2027 indexation method with its 30% minimum tax rate) rather than a precise calculation — the real rules split your gain at that date using a professional valuation or an ATO formula that wasn't finalised when this was built. Treat it as directional, and get a proper valuation and accountant's advice as an actual sale approaches.
+The investment analysis separates the tax-deductible interest portion of a loan repayment from the non-deductible principal portion when estimating after-tax cashflow. It reflects the 2026 Budget's negative-gearing reform: an established property bought after 12 May 2026 can't offset a rental loss against salary from FY2027-28 onward (new builds remain exempt). This isn't tax advice — check your numbers with an accountant.
 
 ## Borrowing power assumptions
 
-The income-based borrowing estimate on the Afford tab mirrors the real structure lenders use — assessed income minus tax minus living expenses minus existing debts, tested against the loan at your rate plus the APRA 3% serviceability buffer — using real FY2026-27 tax brackets, Medicare levy, LITO and the HECS/HELP marginal repayment system. It is not a real bank serviceability calculator: every lender shades bonus/rental income and weighs living expenses differently, and the living-expense default here is a simplified placeholder, not the real bank HEM benchmark (which varies by income, location and household profile and isn't public). Treat the result as a planning estimate, not a pre-approval.
-
-## Journey planner assumptions
-
-The Journey tab assumes you can refinance Property 1 up to your chosen LVR to release equity, and that a lender approves the new loan for Property 2 — both depend on serviceability at the time, not just the property's value. It always calculates Property 2 at standard (non-concession) stamp duty with no LMI waiver, because the federal First Home Guarantee is lost the moment you own any property, and first-home stamp duty concessions are lost in some states (confirmed for NSW and QLD) but not others (VIC and WA don't require you to have never owned an investment property). Confirm your own state's current rules before relying on this.
+Uses real FY2026-27 income tax brackets, Medicare levy, LITO and HECS/HELP repayment thresholds, plus the APRA-mandated 3% serviceability buffer on top of the entered interest rate. Joint applications tax each person's income individually before combining — this mirrors how lenders actually assess a joint application, not a household-level approximation.
 
 ## Project structure
 
 ```
 property-planner/
-├── index.html            # app shell, all screens (Home, Afford, This Property, Journey, Mortgage, Compare, Rates, More)
-├── manifest.json          # PWA manifest
-├── service-worker.js      # offline cache, safe update pattern
+├── index.html              # app shell — Home, Your Position, Compare Your Paths,
+│                            #   This Property, Long-Term Plan, Mortgage, Compare
+│                            #   Properties, Savings Goal, Rates & Guide, More
+├── manifest.json            # PWA manifest
+├── service-worker.js        # offline cache, safe update pattern
 ├── css/
-│   └── styles.css         # design system (light + dark tokens)
+│   └── styles.css           # design system (light + dark tokens)
 ├── js/
-│   ├── rates.js           # stamp duty / LMI / fee / investment default data
-│   ├── tax.js              # FY2026-27 income tax, Medicare levy, LITO, HECS
-│   ├── glossary.js         # plain-English definitions for the tap-to-learn glossary
-│   ├── calc.js             # mortgage, affordability, investment & borrowing-power engine
-│   └── app.js               # UI wiring
+│   ├── rates.js             # stamp duty / LMI / fee / land tax / investment defaults
+│   ├── tax.js                # FY2026-27 income tax, Medicare levy, LITO, HECS
+│   ├── glossary.js           # plain-English definitions for the tap-to-learn glossary
+│   ├── calc.js                # mortgage, affordability, investment, journey & scenario engines
+│   └── app.js                  # UI wiring — Your Position is the single source of
+│                                #   truth for income/savings, everything else reads from it
 └── icons/
     ├── icon-192.png
     └── icon-512.png

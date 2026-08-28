@@ -1,349 +1,380 @@
 <!DOCTYPE html>
-<html lang="en-AU">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<title>Property Planner — Australian Property Affordability</title>
-<meta name="description" content="Work out what you can actually afford to buy in Australia, after stamp duty, LMI and every hidden cost.">
-<meta name="theme-color" content="#EEF0EE" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#14171B" media="(prefers-color-scheme: dark)">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F5F3EE">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Property Planner</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Property Planner">
-<script>
-  // Apply saved/system theme before first paint, to avoid a flash of the wrong theme.
-  (function () {
-    try {
-      var saved = localStorage.getItem("settle-theme");
-      var mode = saved || "system";
-      var isDark = mode === "dark" || (mode === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-      if (isDark) document.documentElement.setAttribute("data-theme", "dark");
-    } catch (e) {}
-  })();
-</script>
+<link rel="icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
 <div id="app">
 
+  <!-- ===================== WELCOME OVERLAY (first run) ===================== -->
+  <div class="welcome-overlay" id="welcome-overlay">
+    <div class="welcome-card">
+      <div class="welcome-title">Welcome to Property Planner</div>
+      <div class="welcome-subtitle">Built to answer one question: what's actually possible, and what's the next step? Four steps, in order — each builds on the last.</div>
+      <div class="welcome-scroll">
+      <div class="step-list">
+        <div class="step-row">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <div class="step-title">Your Position — entered once</div>
+            <div class="step-body">Income (yours and a partner's, if joint), savings, and debts. Every other screen uses this automatically — you won't be asked again.</div>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <div class="step-title">Compare Your Paths</div>
+            <div class="step-body">Buy your target home directly, or via one or two investment properties first — three options side by side, in plain language.</div>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <div class="step-title">This Property</div>
+            <div class="step-body">Once you've picked a path involving an investment property, the full cost, yield and cashflow detail for it.</div>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-number">4</div>
+          <div class="step-content">
+            <div class="step-title">Long-Term Plan</div>
+            <div class="step-body">A 10-year projection, a sell-vs-keep comparison, and what it takes to qualify for your target home when the time comes.</div>
+          </div>
+        </div>
+      </div>
+      <p class="screen-subtitle" style="margin: 14px 0 0;">Tap any underlined term for a plain-English explanation. The Rates &amp; Guide screen under More has the full glossary and buying process whenever you need it.</p>
+      </div>
+      <button class="btn-primary" id="welcome-dismiss">Get started</button>
+    </div>
+  </div>
+
+  <!-- ===================== STATE PICKER SHEET ===================== -->
+  <div class="sheet-backdrop" id="sheet-backdrop"></div>
+  <div class="sheet" id="state-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Choose state or territory</div>
+    <div class="sheet-list" id="state-sheet-list"></div>
+  </div>
+
+  <!-- ===================== GLOSSARY SHEET ===================== -->
+  <div class="sheet-backdrop" id="glossary-backdrop"></div>
+  <div class="sheet" id="glossary-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="glossary-sheet-title"></div>
+    <div class="glossary-sheet-body">
+      <div class="glossary-sheet-full" id="glossary-sheet-full"></div>
+      <div class="glossary-sheet-def" id="glossary-sheet-def"></div>
+    </div>
+  </div>
 
   <!-- ===================== HOME / DASHBOARD ===================== -->
   <section id="screen-home" class="screen active">
     <div class="large-title">Your plan</div>
-    <p class="screen-subtitle" id="home-subtitle">Work through these in order — each one builds on the last. Tap any card to start or review it.</p>
-
+    <p class="screen-subtitle" id="home-subtitle">Work through these in order — each one builds on the last.</p>
     <div id="home-cards"></div>
-
     <div class="info-note" style="margin-top:22px;">
       <span class="dot"></span>
-      <span>Need the mortgage stress test, property comparison, buying guide, or glossary? They're all under <strong>More</strong> at the bottom.</span>
+      <span>Need the mortgage calculator, a savings goal, property comparison, or the glossary? They're all under <strong>More</strong> at the bottom.</span>
     </div>
   </section>
 
-  <!-- ===================== AFFORD TAB ===================== -->
-  <section id="screen-afford" class="screen">
+  <!-- ===================== 1. YOUR POSITION ===================== -->
+  <section id="screen-position" class="screen">
     <button class="back-to-home-link" data-back-home>← Back to your plan</button>
-    <div class="large-title">What can I afford?</div>
-    <p class="screen-subtitle">Enter your loan capacity and savings — we'll work backwards through stamp duty, LMI and fees to your real maximum purchase price.</p>
+    <div class="large-title">Your position</div>
+    <p class="screen-subtitle">Enter this once — income, savings and debts. Every other screen in the app uses these numbers automatically.</p>
 
-    <div class="eyebrow">Don't know your loan capacity?</div>
+    <div class="eyebrow">Your income</div>
     <div class="group">
-      <div class="row tappable" id="af-borrow-toggle-row">
+      <div class="row">
+        <span class="row-label">Gross salary</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="pos-salary" placeholder="110,000" value="110,000"><span>/yr</span></div>
+      </div>
+      <div class="row">
         <div>
-          <div class="row-label">Estimate it from my income</div>
-          <div class="row-sublabel">Salary, debts &amp; expenses → a real borrowing estimate</div>
+          <div class="row-label">Other income</div>
+          <div class="row-sublabel">Bonus / overtime, shaded 80%</div>
         </div>
-        <span class="chevron" id="af-borrow-chevron">›</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="pos-other-income" placeholder="0"><span>/yr</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label"><span class="term-link" data-term="hecs">HECS / HELP</span> debt</span>
+        <label class="switch"><input type="checkbox" id="pos-hecs"><span class="switch-track"></span></label>
       </div>
     </div>
 
-    <div id="af-borrow-panel" class="hidden">
-      <div class="eyebrow">Income</div>
+    <div class="row">
+      <div>
+        <div class="row-label">Applying with a partner</div>
+        <div class="row-sublabel">Combines both incomes for a joint application</div>
+      </div>
+      <label class="switch"><input type="checkbox" id="pos-joint"><span class="switch-track"></span></label>
+    </div>
+
+    <div id="pos-partner-group" class="hidden">
+      <div class="eyebrow">Partner's income</div>
       <div class="group">
         <div class="row">
-          <span class="row-label">Gross salary</span>
-          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp-salary" placeholder="110,000" value="110,000"><span>/yr</span></div>
+          <span class="row-label">Partner's gross salary</span>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="pos2-salary" placeholder="90,000" value="90,000"><span>/yr</span></div>
         </div>
         <div class="row">
           <div>
-            <div class="row-label">Other income</div>
+            <div class="row-label">Partner's other income</div>
             <div class="row-sublabel">Bonus / overtime, shaded 80%</div>
           </div>
-          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp-other-income" placeholder="0"><span>/yr</span></div>
+          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="pos2-other-income" placeholder="0"><span>/yr</span></div>
         </div>
         <div class="row">
-          <div>
-            <div class="row-label">This is for an investment property</div>
-            <div class="row-sublabel">Counts shaded rental income too</div>
-          </div>
-          <label class="switch"><input type="checkbox" id="bp-is-investment" checked><span class="switch-track"></span></label>
-        </div>
-        <div class="row" id="bp-rent-row">
-          <span class="row-label">Expected rent</span>
-          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp-rent" placeholder="550" value="550"><span>/wk</span></div>
-        </div>
-        <div class="row" id="bp-rent-shade-row">
-          <div>
-            <div class="row-label">Rental income shading</div>
-            <div class="row-sublabel">Lenders typically use 70-80%</div>
-          </div>
-          <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="bp-rent-shade" placeholder="80" value="80" style="text-align:right"><span>%</span></div>
+          <span class="row-label">Partner has <span class="term-link" data-term="hecs">HECS / HELP</span> debt</span>
+          <label class="switch"><input type="checkbox" id="pos2-hecs"><span class="switch-track"></span></label>
         </div>
         <div class="row">
-          <span class="row-label"><span class="term-link" data-term="hecs">HECS / HELP</span> debt</span>
-          <label class="switch"><input type="checkbox" id="bp-hecs"><span class="switch-track"></span></label>
-        </div>
-        <div class="row">
-          <div>
-            <div class="row-label">Applying with a partner</div>
-            <div class="row-sublabel">Combines both incomes for a joint application</div>
-          </div>
-          <label class="switch"><input type="checkbox" id="bp-joint"><span class="switch-track"></span></label>
-        </div>
-        <div class="row">
-          <span class="row-label">Dependents</span>
-          <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="bp-dependents" placeholder="0" value="0" style="text-align:right"></div>
-        </div>
-      </div>
-
-      <div id="bp-partner-group" class="hidden">
-        <div class="eyebrow">Partner's income</div>
-        <div class="group">
-          <div class="row">
-            <span class="row-label">Partner's gross salary</span>
-            <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp2-salary" placeholder="90,000" value="90,000"><span>/yr</span></div>
-          </div>
-          <div class="row">
-            <div>
-              <div class="row-label">Partner's other income</div>
-              <div class="row-sublabel">Bonus / overtime, shaded 80%</div>
-            </div>
-            <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp2-other-income" placeholder="0"><span>/yr</span></div>
-          </div>
-          <div class="row">
-            <span class="row-label">Partner has <span class="term-link" data-term="hecs">HECS / HELP</span> debt</span>
-            <label class="switch"><input type="checkbox" id="bp2-hecs"><span class="switch-track"></span></label>
-          </div>
-          <div class="row">
-            <div class="row-sublabel">Each of you is taxed individually — brackets, Medicare levy and HECS all apply per person — then the two after-tax incomes are combined. Dependents, expenses and debts below stay as one household total, matching how lenders actually assess a joint application.</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="eyebrow">Living expenses &amp; debts</div>
-      <div class="group">
-        <div class="row">
-          <div>
-            <div class="row-label">Living expenses</div>
-            <div class="row-sublabel">A simplified default is used if left blank — not the real bank HEM figure</div>
-          </div>
-          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp-living" placeholder="2,200"><span>/mo</span></div>
-        </div>
-        <div class="row">
-          <div>
-            <div class="row-label">Credit card limits</div>
-            <div class="row-sublabel">Total across all cards, assessed at 3%/mo</div>
-          </div>
-          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp-cc-limit" placeholder="10,000" value="10,000"></div>
-        </div>
-        <div class="row">
-          <span class="row-label">Personal loan repayments</span>
-          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp-personal-loan" placeholder="0"><span>/mo</span></div>
-        </div>
-        <div class="row">
-          <div>
-            <div class="row-label">Other loan repayments</div>
-            <div class="row-sublabel">e.g. an existing mortgage</div>
-          </div>
-          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp-other-loan" placeholder="0"><span>/mo</span></div>
-        </div>
-        <div class="row">
-          <div>
-            <div class="row-label">Existing loan balances</div>
-            <div class="row-sublabel">Optional, for the DTI check only</div>
-          </div>
-          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="bp-existing-balances" placeholder="0"></div>
-        </div>
-      </div>
-
-      <div class="eyebrow">New loan</div>
-      <div class="group">
-        <div class="row">
-          <span class="row-label">Interest rate</span>
-          <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="bp-rate" placeholder="6.50" value="6.50" style="text-align:right"><span>% p.a.</span></div>
-        </div>
-        <div class="row">
-          <span class="row-label">Loan term</span>
-          <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="bp-term" placeholder="30" value="30" style="text-align:right"><span>years</span></div>
-        </div>
-      </div>
-
-      <button class="btn-secondary" id="bp-calc">Estimate my borrowing power</button>
-
-      <div id="bp-results" class="hidden">
-        <div class="hero-result">
-          <div class="hero-label">Estimated maximum loan</div>
-          <div class="hero-number tabular" id="bp-max-loan">$0</div>
-          <div class="hero-caption">at your rate + the 3% APRA serviceability buffer</div>
-        </div>
-        <div class="breakdown" id="bp-breakdown"></div>
-        <div class="status-banner" id="bp-dti-status"></div>
-        <button class="btn-primary" id="bp-use">Use this as my maximum loan</button>
-        <div class="info-note">
-          <span class="dot"></span>
-          <span>This mirrors the structure lenders use, but every lender's calculator differs — treat this as a realistic estimate for planning, not a pre-approval. Speak to a broker or lender for your actual borrowing capacity.</span>
+          <div class="row-sublabel">Each of you is taxed individually — brackets, Medicare levy and HECS all apply per person — then the two after-tax incomes are combined. That's how a joint application is actually assessed.</div>
         </div>
       </div>
     </div>
 
-    <div class="eyebrow">Your finances</div>
+    <div class="eyebrow">Dependents &amp; existing debts</div>
     <div class="group">
       <div class="row">
-        <span class="row-label">Maximum loan amount</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="af-loan" placeholder="600,000" value="600,000"></div>
-      </div>
-      <div class="row">
-        <span class="row-label">Savings / deposit available</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="af-cash" placeholder="120,000" value="120,000"></div>
+        <span class="row-label">Dependents</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="pos-dependents" placeholder="0" value="0" style="text-align:right"></div>
       </div>
       <div class="row">
         <div>
-          <div class="row-label">Keep a cash buffer</div>
-          <div class="row-sublabel">Leave some savings untouched</div>
+          <div class="row-label">Living expenses</div>
+          <div class="row-sublabel">A simplified default is used if left blank — not the real HEM figure lenders use</div>
         </div>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="af-buffer" placeholder="0" value="0"></div>
-      </div>
-    </div>
-
-    <div class="eyebrow">Property &amp; buyer profile</div>
-    <div class="group">
-      <div class="row tappable" id="af-state-row">
-        <span class="row-label">State / territory</span>
-        <span class="row-value" id="af-state-value">NSW <span class="chevron">›</span></span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="pos-living" placeholder="2,500"><span>/mo</span></div>
       </div>
       <div class="row">
-        <span class="row-label">First home buyer</span>
-        <label class="switch"><input type="checkbox" id="af-fhb"><span class="switch-track"></span></label>
-      </div>
-      <div class="row hidden" id="af-lmi-waived-row">
         <div>
-          <div class="row-label">No <span class="term-link" data-term="lmi">LMI</span> (<span class="term-link" data-term="fhg">First Home Guarantee</span>)</div>
-          <div class="row-sublabel">5% deposit scheme, subject to eligibility</div>
+          <div class="row-label">Credit card limits</div>
+          <div class="row-sublabel">Total across all cards, assessed at 3%/mo</div>
         </div>
-        <label class="switch"><input type="checkbox" id="af-lmi-waived"><span class="switch-track"></span></label>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="pos-cc-limit" placeholder="10,000" value="10,000"></div>
       </div>
       <div class="row">
-        <span class="row-label">Use</span>
-        <div class="segmented" style="width:180px" id="af-use">
-          <button class="active" data-val="owner">Owner-occ.</button>
-          <button data-val="investor">Investor</button>
+        <span class="row-label">Personal loan repayments</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="pos-personal-loan" placeholder="0"><span>/mo</span></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Other loan repayments</div>
+          <div class="row-sublabel">e.g. an existing mortgage</div>
         </div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="pos-other-loan" placeholder="0"><span>/mo</span></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Existing loan balances</div>
+          <div class="row-sublabel">Optional — for the DTI check only</div>
+        </div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="pos-existing-balances" placeholder="0"></div>
       </div>
     </div>
 
-    <button class="btn-primary" id="af-calc">Calculate my maximum price</button>
-
-    <div id="af-results" class="hidden">
-      <div class="hero-result">
-        <div class="hero-label">Maximum realistic property price</div>
-        <div class="hero-number tabular" id="af-max-price">$0</div>
-        <div class="hero-caption" id="af-caption">after stamp duty, LMI and purchase costs</div>
-      </div>
-
-      <div class="ledger">
-        <div class="ledger-bar" id="af-ledger-bar"></div>
-        <div class="ledger-legend">
-          <div class="ledger-legend-item"><span class="ledger-dot" style="background:var(--loan-color)"></span>Loan</div>
-          <div class="ledger-legend-item"><span class="ledger-dot" style="background:var(--cash-color)"></span>Deposit / cash</div>
-          <div class="ledger-legend-item"><span class="ledger-dot" style="background:var(--cost-color)"></span>Costs bite</div>
-        </div>
-      </div>
-
-      <div class="breakdown" id="af-breakdown"></div>
-      <div class="status-banner" id="af-status"></div>
-      <div id="af-buffer-note"></div>
-      <button class="btn-primary guided-continue-btn" id="af-guided-continue">Continue to Invest →</button>
-    </div>
-  </section>
-
-  <!-- ===================== MORTGAGE TAB ===================== -->
-  <section id="screen-mortgage" class="screen">
-    <button class="back-to-home-link" data-back-more>← Back to More</button>
-    <div class="large-title">Mortgage repayments</div>
-    <p class="screen-subtitle">See your actual repayment, total interest, and payoff date — with extra repayments and offset.</p>
-
-    <div class="eyebrow">Loan details</div>
+    <div class="eyebrow">Savings</div>
     <div class="group">
       <div class="row">
-        <span class="row-label">Loan amount</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="mg-loan" placeholder="600,000" value="600,000"></div>
+        <span class="row-label">Current combined savings</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="pos-savings" placeholder="180,000" value="180,000"></div>
       </div>
+      <div class="row">
+        <span class="row-label">Combined monthly savings</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="pos-monthly-savings" placeholder="3,500" value="3,500"></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Assumed savings interest</div>
+          <div class="row-sublabel">On a high-interest savings account</div>
+        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="pos-savings-rate" placeholder="4.5" value="4.5" style="text-align:right"><span>% p.a.</span></div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Assumed loan terms</div>
+    <div class="group">
       <div class="row">
         <span class="row-label">Interest rate</span>
-        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="mg-rate" placeholder="6.00" style="text-align:right" value="6.00"><span>% p.a.</span></div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="pos-rate" placeholder="6.50" value="6.50" style="text-align:right"><span>% p.a.</span></div>
       </div>
       <div class="row">
         <span class="row-label">Loan term</span>
-        <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="mg-term" placeholder="30" style="text-align:right" value="30"><span>years</span></div>
-      </div>
-      <div class="row">
-        <span class="row-label">Repayment type</span>
-        <div class="segmented" style="width:160px" id="mg-type">
-          <button class="active" data-val="PI">P&amp;I</button>
-          <button data-val="IO">Interest only</button>
-        </div>
-      </div>
-      <div class="row">
-        <span class="row-label">Frequency</span>
-        <div class="segmented" style="width:210px" id="mg-freq">
-          <button data-val="weekly">Weekly</button>
-          <button data-val="fortnightly">Fortnightly</button>
-          <button class="active" data-val="monthly">Monthly</button>
-        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="pos-term" placeholder="30" value="30" style="text-align:right"><span>years</span></div>
       </div>
     </div>
 
-    <div class="eyebrow">Optional extras</div>
-    <div class="group">
-      <div class="row">
-        <div>
-          <div class="row-label">Extra repayment</div>
-          <div class="row-sublabel">Per period, on top of minimum</div>
-        </div>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="mg-extra" placeholder="0" value="0"></div>
-      </div>
-      <div class="row">
-        <div>
-          <div class="row-label"><span class="term-link" data-term="offset">Offset account</span> balance</div>
-          <div class="row-sublabel">Reduces interest-charged balance</div>
-        </div>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="mg-offset" placeholder="0" value="0"></div>
-      </div>
-    </div>
+    <button class="btn-primary" id="pos-calc">Calculate our position</button>
 
-    <button class="btn-primary" id="mg-calc">Calculate repayments</button>
-
-    <div id="mg-results" class="hidden">
+    <div id="pos-results" class="hidden">
       <div class="hero-result">
-        <div class="hero-label" id="mg-hero-label">Monthly repayment</div>
-        <div class="hero-number tabular" id="mg-repayment">$0</div>
-        <div class="hero-caption" id="mg-caption"></div>
+        <div class="hero-label">Combined borrowing power</div>
+        <div class="hero-number tabular" id="pos-max-loan">$0</div>
+        <div class="hero-caption" id="pos-caption"></div>
       </div>
-      <div id="mg-stress-banner"></div>
-      <div class="breakdown" id="mg-breakdown"></div>
-
-      <div class="eyebrow">If rates change</div>
-      <p class="screen-subtitle" style="margin-top:-4px;">Banks stress-test you at your rate + 3% before approving a loan — here's what that actually looks like on your repayment.</p>
-      <div class="breakdown" id="mg-stress-test"></div>
+      <div class="breakdown" id="pos-breakdown"></div>
+      <div class="status-banner hidden" id="pos-dti-status"></div>
+      <div id="pos-buffer-note"></div>
+      <button class="btn-primary guided-continue-btn" id="pos-guided-continue">Continue to Compare Your Paths →</button>
     </div>
   </section>
 
-  <!-- ===================== COSTS TAB ===================== -->
+  <!-- ===================== 2. COMPARE YOUR PATHS ===================== -->
+  <section id="screen-paths" class="screen">
+    <button class="back-to-home-link" data-back-home>← Back to your plan</button>
+    <div class="large-title">Compare your paths</div>
+    <p class="screen-subtitle">Three ways to get to your target home — buy it directly, or via one or two investment properties first. Uses your position from the last step automatically.</p>
+
+    <div class="eyebrow">Your target home</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Target price today</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="pth-target-price" placeholder="1,000,000" value="1,000,000"></div>
+      </div>
+      <div class="row tappable" id="pth-target-state-row">
+        <span class="row-label">State / territory</span>
+        <span class="row-value" id="pth-target-state-value">NSW <span class="chevron">›</span></span>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Market growth rate</div>
+          <div class="row-sublabel">How fast that market is rising</div>
+        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="pth-target-growth" placeholder="7" value="7" style="text-align:right"><span>% p.a.</span></div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Property 1 — if buying an investment first</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Purchase price</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="pth-price1" placeholder="500,000" value="500,000"></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Deposit</div>
+          <div class="row-sublabel" id="pth-deposit1-dollar"></div>
+        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="pth-deposit1" placeholder="20" value="20" style="text-align:right"><span>%</span></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label"><span class="term-link" data-term="cagr">Growth rate</span></div>
+          <div class="row-sublabel">Estimated CAGR for this property</div>
+        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="pth-growth1" placeholder="6" value="6" style="text-align:right"><span>% p.a.</span></div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Property 2 — only for the two-investment path</div>
+    <div class="group">
+      <div class="row">
+        <span class="row-label">Purchase price</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="pth-price2" placeholder="450,000" value="450,000"></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Deposit</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="pth-deposit2" placeholder="20" value="20" style="text-align:right"><span>%</span></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Growth rate</div>
+          <div class="row-sublabel">Can differ from Property 1's</div>
+        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="pth-growth2" placeholder="9" value="9" style="text-align:right"><span>% p.a.</span></div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Timing</div>
+    <div class="group">
+      <div class="row">
+        <div>
+          <div class="row-label">Years until you'd buy the target home</div>
+          <div class="row-sublabel">For the investment-first paths</div>
+        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="pth-years" placeholder="5" value="5" style="text-align:right"><span>yrs</span></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label"><span class="term-link" data-term="lvr">Equity release LVR</span></div>
+          <div class="row-sublabel">How far a lender lets you refinance to</div>
+        </div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="pth-equity-lvr" placeholder="80" value="80" style="text-align:right"><span>%</span></div>
+      </div>
+      <div class="row">
+        <div>
+          <div class="row-label">Combined buffer to keep aside</div>
+          <div class="row-sublabel">Not counted toward any deposit</div>
+        </div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="pth-buffer" placeholder="15,000" value="15,000"></div>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="pth-calc">Compare my paths</button>
+
+    <div id="pth-results" class="hidden">
+      <div class="eyebrow">Path 1 — buy directly, no investment first</div>
+      <div class="story-card" id="pth-card-1">
+        <div class="story-card-header">
+          <div class="story-card-number">1</div>
+          <div class="story-card-body">
+            <div class="story-card-title" id="pth1-title"></div>
+            <div class="story-card-desc" id="pth1-desc"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="eyebrow">Path 2 — one investment property first</div>
+      <div class="story-card" id="pth-card-2">
+        <div class="story-card-header">
+          <div class="story-card-number">2</div>
+          <div class="story-card-body">
+            <div class="story-card-title" id="pth2-title"></div>
+            <div class="story-card-desc" id="pth2-desc"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="eyebrow">Path 3 — two investment properties first</div>
+      <div class="story-card" id="pth-card-3">
+        <div class="story-card-header">
+          <div class="story-card-number">3</div>
+          <div class="story-card-body">
+            <div class="story-card-title" id="pth3-title"></div>
+            <div class="story-card-desc" id="pth3-desc"></div>
+          </div>
+        </div>
+      </div>
+      <div class="row" style="padding:14px 4px;">
+        <span class="row-label">Buffer check (Path 3)</span>
+        <span class="row-value" id="pth3-buffer-check"></span>
+      </div>
+
+      <div class="status-banner neutral" id="pth-recommendation"></div>
+      <div class="info-note">
+        <span class="dot"></span>
+        <span>These are directional estimates built from your own assumptions — market growth, savings rate and borrowing capacity are all guesses about the future, and the further out a path reaches, the less reliable the guess. Path 3 concentrates risk (two loans, two tenancies) — read the buffer check above before treating it as the easy win.</span>
+      </div>
+
+      <button class="btn-primary guided-continue-btn" id="pth-guided-continue">Continue to This Property →</button>
+    </div>
+  </section>
+
+  <!-- ===================== 3. THIS PROPERTY ===================== -->
   <section id="screen-costs" class="screen">
     <button class="back-to-home-link" data-back-home>← Back to your plan</button>
     <div class="large-title">This property</div>
@@ -659,15 +690,17 @@
         <div class="breakdown hidden" id="co-ongoing-breakdown"></div>
       </div>
 
-      <button class="btn-primary guided-continue-btn" id="co-guided-continue">Continue to Journey →</button>
+      <button class="btn-primary guided-continue-btn" id="co-guided-continue">Continue to Long-Term Plan →</button>
     </div>
   </section>
 
   <!-- ===================== JOURNEY TAB ===================== -->
+
+  <!-- ===================== 4. LONG-TERM PLAN ===================== -->
   <section id="screen-journey" class="screen">
     <button class="back-to-home-link" data-back-home>← Back to your plan</button>
-    <div class="large-title">Your property journey</div>
-    <p class="screen-subtitle">Investment property now, home to live in later — see how equity from Property 1 could fund the deposit on Property 2.</p>
+    <div class="large-title">Long-term plan</div>
+    <p class="screen-subtitle">A 10-year projection, sell-vs-keep, and what it takes to qualify for your target home. Property 1 uses whatever you set on Compare Your Paths.</p>
 
     <div class="info-note">
       <span class="dot"></span>
@@ -760,63 +793,21 @@
       </div>
       <div class="row">
         <div>
-          <div class="row-label">Estimated future borrowing capacity</div>
-          <div class="row-sublabel">Or estimate it below from your projected income</div>
+          <div class="row-label">Borrowing capacity by then</div>
+          <div class="row-sublabel" id="jy-loan2-hint">From your position — edit to test a different figure</div>
         </div>
         <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="jy-loan2" placeholder="700,000" value="700,000"></div>
       </div>
-    </div>
-
-    <div class="row tappable" id="jy2-borrow-toggle-row">
-      <div>
-        <div class="row-label">Estimate it from your future income</div>
-        <div class="row-sublabel">Projects your income + Property 1's rent as a credit</div>
-      </div>
-      <span class="chevron" id="jy2-borrow-chevron">›</span>
-    </div>
-    <div id="jy2-borrow-panel" class="hidden">
-      <div class="eyebrow">Income at time of purchase</div>
-      <div class="group">
-        <div class="row">
-          <span class="row-label">Your gross salary then</span>
-          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="jy2-salary" placeholder="130,000" value="130,000"><span>/yr</span></div>
+      <div class="row">
+        <div>
+          <div class="row-label">Credit Property 1's rent</div>
+          <div class="row-sublabel">Lenders typically credit 70-80% of rental income toward this</div>
         </div>
-        <div class="row">
-          <div>
-            <div class="row-label">Applying with a partner</div>
-            <div class="row-sublabel">Combines both incomes</div>
-          </div>
-          <label class="switch"><input type="checkbox" id="jy2-joint" checked><span class="switch-track"></span></label>
-        </div>
-        <div class="row" id="jy2-partner-row">
-          <span class="row-label">Partner's gross salary then</span>
-          <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="jy2-partner-salary" placeholder="140,000" value="140,000"><span>/yr</span></div>
-        </div>
-        <div class="row">
-          <div>
-            <div class="row-label">Credit Property 1's rent</div>
-            <div class="row-sublabel">Lenders typically credit 70-80% of rental income</div>
-          </div>
-          <label class="switch"><input type="checkbox" id="jy2-rent-credit" checked><span class="switch-track"></span></label>
-        </div>
-        <div class="row">
-          <span class="row-label">Rent credit shading</span>
-          <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="jy2-rent-shade" placeholder="70" value="70" style="text-align:right"><span>%</span></div>
-        </div>
-      </div>
-      <button class="btn-secondary" id="jy2-borrow-calc">Estimate borrowing capacity</button>
-      <div id="jy2-borrow-results" class="hidden">
-        <div class="hero-result">
-          <div class="hero-label">Estimated maximum loan</div>
-          <div class="hero-number tabular" id="jy2-max-loan">$0</div>
-          <div class="hero-caption">using your rate + the 3% APRA serviceability buffer</div>
-        </div>
-        <div class="breakdown" id="jy2-borrow-breakdown"></div>
-        <button class="btn-primary" id="jy2-borrow-use">Use this as my borrowing capacity</button>
+        <label class="switch"><input type="checkbox" id="jy-rent-credit" checked><span class="switch-track"></span></label>
       </div>
     </div>
 
-    <button class="btn-primary" id="jy-calc">Calculate my journey</button>
+    <button class="btn-primary" id="jy-calc">Calculate my long-term plan</button>
 
     <div id="jy-results" class="hidden">
       <div class="eyebrow">Property 1, at year of purchasing Property 2</div>
@@ -874,135 +865,81 @@
     </div>
   </section>
 
-  <!-- ===================== SCENARIOS TAB ===================== -->
-  <section id="screen-scenarios" class="screen">
-    <button class="back-to-home-link" data-back-home>← Back to your plan</button>
-    <div class="large-title">Compare your paths</div>
-    <p class="screen-subtitle">Three ways to get to your target home — buy it directly, buy one investment property first, or two. See what's actually possible and when.</p>
+  <!-- ===================== MORTGAGE ===================== -->
+  <section id="screen-mortgage" class="screen">
+    <button class="back-to-home-link" data-back-more>← Back to More</button>
+    <div class="large-title">Mortgage repayments</div>
+    <p class="screen-subtitle">See your actual repayment, total interest, and payoff date — with extra repayments and offset.</p>
 
-    <div class="eyebrow">Your target home</div>
+    <div class="eyebrow">Loan details</div>
     <div class="group">
       <div class="row">
-        <span class="row-label">Target price today</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="sc-target-price" placeholder="1,000,000" value="1,000,000"></div>
-      </div>
-      <div class="row tappable" id="sc-target-state-row">
-        <span class="row-label">State / territory</span>
-        <span class="row-value" id="sc-target-state-value">NSW <span class="chevron">›</span></span>
-      </div>
-      <div class="row">
-        <div>
-          <div class="row-label">Market growth rate</div>
-          <div class="row-sublabel">How fast that market is rising</div>
-        </div>
-        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="sc-target-growth" placeholder="7" value="7" style="text-align:right"><span>% p.a.</span></div>
-      </div>
-    </div>
-
-    <div class="eyebrow">Your combined position</div>
-    <div class="group">
-      <div class="row">
-        <div>
-          <div class="row-label">Combined borrowing capacity</div>
-          <div class="row-sublabel">From the Afford tab, or your own estimate</div>
-        </div>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="sc-borrow-capacity" placeholder="850,000" value="850,000"></div>
-      </div>
-      <div class="row">
-        <span class="row-label">Combined current savings</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="sc-savings" placeholder="180,000" value="180,000"></div>
-      </div>
-      <div class="row">
-        <span class="row-label">Combined monthly savings</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="sc-monthly-savings" placeholder="3,750" value="3,750"></div>
-      </div>
-      <div class="row">
-        <span class="row-label">Assumed savings interest</span>
-        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="sc-savings-rate" placeholder="4.5" value="4.5" style="text-align:right"><span>% p.a.</span></div>
-      </div>
-    </div>
-
-    <div class="eyebrow">Property 2 — for the two-property scenario</div>
-    <p class="screen-subtitle" style="margin-top:-4px;">Property 1 uses whatever you've already entered on the Journey tab.</p>
-    <div class="group">
-      <div class="row">
-        <span class="row-label">Purchase price</span>
-        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="sc-priceB" placeholder="450,000" value="450,000"></div>
-      </div>
-      <div class="row">
-        <span class="row-label">Deposit</span>
-        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="sc-depositB" placeholder="20" value="20" style="text-align:right"><span>%</span></div>
+        <span class="row-label">Loan amount</span>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="mg-loan" placeholder="600,000" value="600,000"></div>
       </div>
       <div class="row">
         <span class="row-label">Interest rate</span>
-        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="sc-rateB" placeholder="6.64" value="6.64" style="text-align:right"><span>% p.a.</span></div>
+        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="mg-rate" placeholder="6.00" style="text-align:right" value="6.00"><span>% p.a.</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Loan term</span>
+        <div class="row-input-prefix"><input class="row-input" inputmode="numeric" id="mg-term" placeholder="30" style="text-align:right" value="30"><span>years</span></div>
+      </div>
+      <div class="row">
+        <span class="row-label">Repayment type</span>
+        <div class="segmented" style="width:160px" id="mg-type">
+          <button class="active" data-val="PI">P&amp;I</button>
+          <button data-val="IO">Interest only</button>
+        </div>
+      </div>
+      <div class="row">
+        <span class="row-label">Frequency</span>
+        <div class="segmented" style="width:210px" id="mg-freq">
+          <button data-val="weekly">Weekly</button>
+          <button data-val="fortnightly">Fortnightly</button>
+          <button class="active" data-val="monthly">Monthly</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="eyebrow">Optional extras</div>
+    <div class="group">
+      <div class="row">
+        <div>
+          <div class="row-label">Extra repayment</div>
+          <div class="row-sublabel">Per period, on top of minimum</div>
+        </div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="mg-extra" placeholder="0" value="0"></div>
       </div>
       <div class="row">
         <div>
-          <div class="row-label">Growth rate</div>
-          <div class="row-sublabel">Can differ from Property 1's</div>
+          <div class="row-label"><span class="term-link" data-term="offset">Offset account</span> balance</div>
+          <div class="row-sublabel">Reduces interest-charged balance</div>
         </div>
-        <div class="row-input-prefix"><input class="row-input" inputmode="decimal" id="sc-growthB" placeholder="9" value="9" style="text-align:right"><span>% p.a.</span></div>
+        <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="mg-offset" placeholder="0" value="0"></div>
       </div>
     </div>
 
-    <div class="row">
-      <div>
-        <div class="row-label">Combined buffer to keep aside</div>
-        <div class="row-sublabel">Not counted toward any deposit</div>
-      </div>
-      <div class="row-input-prefix"><span>$</span><input class="row-input" inputmode="numeric" id="sc-buffer" placeholder="80,000" value="80,000"></div>
-    </div>
+    <button class="btn-primary" id="mg-calc">Calculate repayments</button>
 
-    <button class="btn-primary" id="sc-calc">Compare my scenarios</button>
+    <div id="mg-results" class="hidden">
+      <div class="hero-result">
+        <div class="hero-label" id="mg-hero-label">Monthly repayment</div>
+        <div class="hero-number tabular" id="mg-repayment">$0</div>
+        <div class="hero-caption" id="mg-caption"></div>
+      </div>
+      <div id="mg-stress-banner"></div>
+      <div class="breakdown" id="mg-breakdown"></div>
 
-    <div id="sc-results" class="hidden">
-      <div class="eyebrow">Scenario 1 — buy directly, no investment first</div>
-      <div class="story-card" id="sc-card-1">
-        <div class="story-card-header">
-          <div class="story-card-number">1</div>
-          <div class="story-card-body">
-            <div class="story-card-title" id="sc1-title"></div>
-            <div class="story-card-desc" id="sc1-desc"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="eyebrow">Scenario 2 — one investment property first</div>
-      <div class="story-card" id="sc-card-2">
-        <div class="story-card-header">
-          <div class="story-card-number">2</div>
-          <div class="story-card-body">
-            <div class="story-card-title" id="sc2-title"></div>
-            <div class="story-card-desc" id="sc2-desc"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="eyebrow">Scenario 3 — two investment properties first</div>
-      <div class="story-card" id="sc-card-3">
-        <div class="story-card-header">
-          <div class="story-card-number">3</div>
-          <div class="story-card-body">
-            <div class="story-card-title" id="sc3-title"></div>
-            <div class="story-card-desc" id="sc3-desc"></div>
-          </div>
-        </div>
-      </div>
-      <div class="row" style="padding:14px 4px;">
-        <span class="row-label">Buffer check (Scenario 3)</span>
-        <span class="row-value" id="sc3-buffer-check"></span>
-      </div>
-
-      <div class="status-banner neutral" id="sc-recommendation"></div>
-      <div class="info-note">
-        <span class="dot"></span>
-        <span>These are directional estimates built from your own assumptions — market growth, savings rate and borrowing capacity are all guesses about the future, and the further out a scenario reaches, the less reliable the guess. Scenario 3 in particular concentrates risk (two loans, two tenancies) — read the buffer check above before treating it as the easy win.</span>
-      </div>
+      <div class="eyebrow">If rates change</div>
+      <p class="screen-subtitle" style="margin-top:-4px;">Banks stress-test you at your rate + 3% before approving a loan — here's what that actually looks like on your repayment.</p>
+      <div class="breakdown" id="mg-stress-test"></div>
     </div>
   </section>
 
-  <!-- ===================== COMPARE TAB ===================== -->
+  <!-- ===================== COSTS TAB ===================== -->
+
+  <!-- ===================== COMPARE PROPERTIES ===================== -->
   <section id="screen-compare" class="screen">
     <button class="back-to-home-link" data-back-more>← Back to More</button>
     <div class="large-title">Compare properties</div>
@@ -1046,6 +983,8 @@
   </section>
 
   <!-- ===================== SAVINGS GOAL TAB ===================== -->
+
+  <!-- ===================== SAVINGS GOAL ===================== -->
   <section id="screen-savings" class="screen">
     <button class="back-to-home-link" data-back-more>← Back to More</button>
     <div class="large-title">Deposit savings goal</div>
@@ -1114,6 +1053,8 @@
   </section>
 
   <!-- ===================== RATES / SETTINGS TAB ===================== -->
+
+  <!-- ===================== RATES & GUIDE ===================== -->
   <section id="screen-rates" class="screen">
     <button class="back-to-home-link" data-back-more>← Back to More</button>
     <div class="large-title">Rates &amp; assumptions</div>
@@ -1225,6 +1166,8 @@
   </section>
 
   <!-- ===================== MORE (tools menu) ===================== -->
+
+  <!-- ===================== MORE MENU ===================== -->
   <section id="screen-more" class="screen">
     <div class="large-title">More</div>
     <p class="screen-subtitle">Tools you'll dip into occasionally, rather than step through in order.</p>
@@ -1272,63 +1215,7 @@
     </button>
   </nav>
 
-  <!-- ===================== STATE PICKER SHEET ===================== -->
-  <div class="sheet-backdrop" id="sheet-backdrop"></div>
-  <div class="sheet" id="state-sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-title">Choose state or territory</div>
-    <div class="sheet-list" id="state-sheet-list"></div>
-  </div>
-
-  <!-- ===================== GLOSSARY SHEET ===================== -->
-  <div class="sheet-backdrop" id="glossary-backdrop"></div>
-  <div class="sheet" id="glossary-sheet">
-    <div class="sheet-handle"></div>
-    <div class="sheet-title" id="glossary-sheet-title"></div>
-    <div class="glossary-sheet-body">
-      <div class="glossary-sheet-full" id="glossary-sheet-full"></div>
-      <div class="glossary-sheet-def" id="glossary-sheet-def"></div>
-    </div>
-  </div>
-
-  <!-- ===================== WELCOME OVERLAY (first run) ===================== -->
-  <div class="welcome-overlay" id="welcome-overlay">
-    <div class="welcome-card">
-      <div class="welcome-title">Welcome to Property Planner</div>
-      <div class="welcome-subtitle">Your Home screen shows a plan of 3 steps, in order. Each one builds on the last, and every result shows up right there once you've calculated it — so you always have one place with your full picture.</div>
-      <div class="welcome-scroll">
-      <div class="step-list">
-        <div class="step-row">
-          <div class="step-number">1</div>
-          <div class="step-content">
-            <div class="step-title">Afford — what can you actually borrow?</div>
-            <div class="step-body">Tap "Estimate it from my income" and enter your salary and debts. This is the number everything else builds on.</div>
-          </div>
-        </div>
-        <div class="step-row">
-          <div class="step-number">2</div>
-          <div class="step-content">
-            <div class="step-title">This property — the real cash needed</div>
-            <div class="step-body">Full upfront cost breakdown and affordability check. Switch on "Is this an investment?" to add rent, yield, cashflow and tax — the numbers that should most influence whether you buy.</div>
-          </div>
-        </div>
-        <div class="step-row">
-          <div class="step-number">3</div>
-          <div class="step-content">
-            <div class="step-title">Journey — the long game</div>
-            <div class="step-body">See when you could realistically buy a home to live in afterward, and what buying investment-first costs you in first-home-buyer benefits.</div>
-          </div>
-        </div>
-      </div>
-      <p class="screen-subtitle" style="margin: 14px 0 0;">Tap any underlined term anywhere in the app for a plain-English explanation. The Rates tab has the full buying process guide and glossary whenever you need them.</p>
-      </div>
-      <button class="btn-primary" id="welcome-start-guided">Go to my plan</button>
-      <button class="btn-secondary" id="welcome-dismiss">Explore on my own</button>
-    </div>
-  </div>
-
 </div>
-
 <script src="js/rates.js"></script>
 <script src="js/tax.js"></script>
 <script src="js/glossary.js"></script>
